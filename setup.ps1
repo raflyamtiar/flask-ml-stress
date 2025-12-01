@@ -36,4 +36,26 @@ if (-Not (Test-Path $dbFile)) {
     Write-Host "[INFO] instance database already exists - $dbFile" -ForegroundColor Cyan
 }
 
+# Run Flask-Migrate to create and apply migrations so tables exist
+$env:FLASK_APP = 'run.py'
+try {
+    # initialize migrations folder if missing
+    $migrationsDir = Join-Path $PSScriptRoot 'migrations'
+    if (-Not (Test-Path $migrationsDir)) {
+        Write-Host "[ACTION] initializing migrations" -ForegroundColor Yellow
+        flask db init
+    } else {
+        Write-Host "[INFO] migrations folder exists - skipping init" -ForegroundColor Cyan
+    }
+
+    Write-Host "[ACTION] generating migration" -ForegroundColor Yellow
+    flask db migrate -m "initial"
+
+    Write-Host "[ACTION] applying migrations" -ForegroundColor Yellow
+    flask db upgrade
+}
+catch {
+    Write-Host "[WARN] migrations step failed: $($_.Exception.Message)" -ForegroundColor Magenta
+}
+
 Write-Host "[OK] complete" -ForegroundColor Green
