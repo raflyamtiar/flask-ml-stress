@@ -3,6 +3,11 @@ python-dotenv
 pytest
 Flask-SQLAlchemy
 Flask-Migrate
+Flask-SocketIO
+Flask-Cors
+python-socketio
+python-engineio
+eventlet
 joblib
 pandas
 scikit-learn
