@@ -2,6 +2,34 @@
 
 Minimal Flask scaffold for local development.
 
+## Project structure
+
+```
+config.py
+run.py                    # Flask app runner that calls create_app()
+requirements.txt         # Python dependencies
+setup.ps1                # Helper script to create virtualenv and setup instance
+
+app/                     # Application package
+  __init__.py          # create_app() factory, extension init
+  routes.py            # Flask routes / API endpoints
+  service.py           # Business logic and model integration
+  models.py            # SQLAlchemy models
+  static/              # Static assets (CSS/JS)
+  templates/           # Jinja2 templates
+
+instance/                # Instance folder (local config, DB file)
+migrations/              # Alembic DB migration scripts
+models/                  # Serialized ML models / artifacts (pkl)
+scripts/                 # Utility scripts (e.g., list_tables.py)
+tests/                   # Pytest test suite
+```
+
+Short notes:
+- Use `.venv` for the project virtual environment (see `setup.ps1`).
+- Database file is created under the `instance/` folder when running setup or migrations.
+- ML artifacts used by `/api/predict-stress` are expected under `models/`.
+
 ## Quick start (PowerShell)
 
 ```powershell
