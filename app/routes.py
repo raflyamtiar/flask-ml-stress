@@ -1,5 +1,5 @@
 from flask import Blueprint, render_template, request, jsonify
-from .service import AppInfoService, StressHistoryService
+from .service import AppInfoService, StressHistoryService, StressModelService
 
 main = Blueprint('main', __name__)
 
@@ -185,5 +185,28 @@ def delete_stress_history(rec_id):
 		if ok:
 			return jsonify({'success': True, 'message': 'Record deleted'})
 		return jsonify({'success': False, 'error': 'Record not found'}), 404
+	except Exception as e:
+		return jsonify({'success': False, 'error': str(e)}), 500
+
+
+# --- ML model prediction endpoint ---
+@main.route('/api/predict-stress', methods=['POST'])
+def predict_stress():
+	try:
+		data = request.get_json() or {}
+		# Accept keys: hr, temp, eda
+		missing = [k for k in ('hr', 'temp', 'eda') if k not in data]
+		if missing:
+			return jsonify({'success': False, 'error': f"Missing fields: {', '.join(missing)}"}), 400
+
+		try:
+			hr = float(data['hr'])
+			temp = float(data['temp'])
+			eda = float(data['eda'])
+		except Exception:
+			return jsonify({'success': False, 'error': 'hr, temp and eda must be numbers'}), 400
+
+		result = StressModelService.predict(hr, temp, eda)
+		return jsonify({'success': True, 'data': result})
 	except Exception as e:
 		return jsonify({'success': False, 'error': str(e)}), 500

@@ -2,6 +2,10 @@ from datetime import datetime
 from typing import Optional, List, Dict, Any
 from . import db
 from .models import AppInfo, HistoryStress
+import os
+from pathlib import Path
+import joblib
+import pandas as pd
 
 
 class AppInfoService:
@@ -161,4 +165,67 @@ class StressHistoryService:
             'confidence_level': rec.confidence_level,
             'notes': rec.notes or '',
             'created_at': rec.created_at.isoformat() if rec.created_at else None
+        }
+
+
+class StressModelService:
+    """Load ML scaler and model from repository `models/` folder and provide predict().
+
+    Expects files:
+      - models/scaler_model.pkl
+      - models/classification_rf_model.pkl
+    """
+
+    _scaler = None
+    _model = None
+
+    @classmethod
+    def _model_dir(cls) -> Path:
+        # project root is parent of the `app` package
+        return Path(__file__).resolve().parents[1] / 'models'
+
+    @classmethod
+    def _load_scaler(cls):
+        if cls._scaler is None:
+            scaler_path = cls._model_dir() / 'scaler_model.pkl'
+            if not scaler_path.exists():
+                raise RuntimeError(f"Scaler not found at {scaler_path}")
+            cls._scaler = joblib.load(str(scaler_path))
+        return cls._scaler
+
+    @classmethod
+    def _load_model(cls):
+        if cls._model is None:
+            model_path = cls._model_dir() / 'classification_rf_model.pkl'
+            if not model_path.exists():
+                raise RuntimeError(f"Model not found at {model_path}")
+            cls._model = joblib.load(str(model_path))
+        return cls._model
+
+    @classmethod
+    def predict(cls, hr: float, temp: float, eda: float) -> Dict[str, Any]:
+        scaler = cls._load_scaler()
+        model = cls._load_model()
+
+        # prepare dataframe consistent with training columns
+        df = pd.DataFrame([[hr, temp, eda]], columns=['HR', 'TEMP', 'EDA'])
+        X = scaler.transform(df)
+
+        pred = model.predict(X)[0]
+        # probability for predicted class (max probability)
+        try:
+            proba = float(model.predict_proba(X).max())
+        except Exception:
+            # some models may not support predict_proba
+            proba = 1.0
+
+        label_dict = {0: 'No Stress', 1: 'Medium', 2: 'High Stress'}
+        label = label_dict.get(int(pred), str(pred))
+
+        return {
+            'hr': hr,
+            'temp': temp,
+            'eda': eda,
+            'label': label,
+            'confidence_level': proba
         }
