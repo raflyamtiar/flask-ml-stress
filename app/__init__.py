@@ -1,6 +1,16 @@
+
 from flask import Flask
 from dotenv import load_dotenv
 import os
+from flask_sqlalchemy import SQLAlchemy
+
+
+# Initialize extensions here so they can be imported from other modules
+db = SQLAlchemy()
+from flask_migrate import Migrate
+
+# Migrate extension (initialized in create_app)
+migrate = Migrate()
 
 
 def create_app(config_object=None):
@@ -16,6 +26,21 @@ def create_app(config_object=None):
 
 	if config_object:
 		app.config.from_object(config_object)
+
+	# Ensure instance folder exists (Flask will create it on demand, but ensure DB path)
+	try:
+		os.makedirs(app.instance_path, exist_ok=True)
+	except Exception:
+		pass
+
+	# Default database URI if not provided in config
+	if not app.config.get('SQLALCHEMY_DATABASE_URI'):
+		app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(app.instance_path, 'database.sqlite')
+	app.config.setdefault('SQLALCHEMY_TRACK_MODIFICATIONS', False)
+
+	# Initialize extensions
+	db.init_app(app)
+	migrate.init_app(app, db)
 
 	try:
 		from .routes import main as main_bp
