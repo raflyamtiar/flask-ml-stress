@@ -50,5 +50,12 @@ def create_app(config_object=None):
 		# If blueprint import fails, we still want the app to be importable
 		pass
 
+	# Import models so they are registered on the SQLAlchemy metadata
+	# This ensures `flask db migrate --autogenerate` sees the models.
+	try:
+		from . import models  # noqa: F401
+	except Exception:
+		pass
+
 	return app
 
