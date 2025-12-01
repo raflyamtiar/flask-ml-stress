@@ -1,0 +1,8 @@
+Flask
+python-dotenv
+pytest
+Flask-SQLAlchemy
+Flask-Migrate
+joblib
+pandas
+scikit-learn

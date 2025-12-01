@@ -1,0 +1,86 @@
+.venv/
+# Environment / secrets
+.env
+.env.*
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Flask / project-specific
+instance/
+*.sqlite3
+*.db
+*.log
+
+# Virtual environments
+venv/
+ENV/
+env/
+.venv/
+env.bak/
+venv.bak/
+
+# Testing / coverage
+.pytest_cache/
+htmlcov/
+coverage.xml
+.coverage
+
+# IDEs and editors
+.vscode/
+.idea/
+*.sublime-workspace
+*.sublime-project
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Jupyter
+.ipynb_checkpoints
+
+# Node
+node_modules/
+
+# Misc
+*.pyc
+*.pyo
+*.pyd
+
+# pip
+pip-log.txt
+pip-delete-this-directory.txt
+
+# mypy
+.mypy_cache/
+
+# coverage reports
+coverage/
+
+# other
+/.pytest_cache/
