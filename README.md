@@ -131,6 +131,87 @@ Response:
 }
 ```
 
+#### Stress history (stress_history)
+APIs for storing and retrieving stress test readings (heart rate, temperature, EDA, labels, etc.).
+
+Get all records
+```http
+GET /api/stress-history
+```
+Response:
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": 1,
+      "timestamp": "2025-12-01T12:00:00",
+      "hr": 72.5,
+      "temp": 36.6,
+      "eda": 0.12,
+      "label": "normal",
+      "confidence_level": 0.95,
+      "notes": "sample",
+      "created_at": "2025-12-01T12:00:01"
+    }
+  ]
+}
+```
+
+Get specific record
+```http
+GET /api/stress-history/{id}
+```
+
+Create new record
+```http
+POST /api/stress-history
+Content-Type: application/json
+
+{
+  "hr": 72.5,
+  "temp": 36.6,
+  "eda": 0.12,
+  "label": "normal",
+  "confidence_level": 0.95,
+  "notes": "sample"  # optional; if omitted the server will store an empty string
+}
+```
+
+Update record
+```http
+PUT /api/stress-history/{id}
+Content-Type: application/json
+
+{
+  "hr": 75.0,
+  "notes": "adjusted"
+}
+```
+
+Delete record
+```http
+DELETE /api/stress-history/{id}
+```
+
+### curl examples for stress history
+```powershell
+# List all
+curl http://127.0.0.1:5000/api/stress-history
+
+# Create (do not include `timestamp`; server sets it)
+curl -X POST http://127.0.0.1:5000/api/stress-history -H "Content-Type: application/json" -d '{"hr":72.5,"temp":36.6,"eda":0.12,"label":"normal"}'
+
+# Get
+curl http://127.0.0.1:5000/api/stress-history/1
+
+# Update
+curl -X PUT http://127.0.0.1:5000/api/stress-history/1 -H "Content-Type: application/json" -d '{"notes":"updated"}'
+
+# Delete
+curl -X DELETE http://127.0.0.1:5000/api/stress-history/1
+```
+
 ### Error Responses
 All endpoints return error responses in this format:
 ```json

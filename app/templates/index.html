@@ -67,6 +67,80 @@
 				</div>
 
 				<div class="api-section">
+					<h2>Stress History API Endpoints</h2>
+					<div class="endpoint">
+						<span class="method get">GET</span>
+						<strong>/api/stress-history</strong> - Get all stress history records
+					</div>
+					<div class="endpoint">
+						<span class="method get">GET</span>
+						<strong>/api/stress-history/{id}</strong> - Get specific record
+					</div>
+					<div class="endpoint">
+						<span class="method post">POST</span>
+						<strong>/api/stress-history</strong> - Create new stress history record
+					</div>
+					<div class="endpoint">
+						<span class="method put">PUT</span>
+						<strong>/api/stress-history/{id}</strong> - Update existing record
+					</div>
+					<div class="endpoint">
+						<span class="method delete">DELETE</span>
+						<strong>/api/stress-history/{id}</strong> - Delete record
+					</div>
+
+					<div class="test-form">
+						<h3>Load Stress History Records</h3>
+						<button onclick="loadStressHistories()">Get All Stress History</button>
+						<div id="stressList" class="app-list"></div>
+					</div>
+
+					<div class="test-form">
+						<h3>Create New Stress History</h3>
+						<p style="font-size:0.95em;color:#555;margin-bottom:10px;">Note: do not include `timestamp` in the request — the server sets it automatically.</p>
+						<div class="form-group">
+							<label>Heart Rate (hr):</label>
+							<input type="number" id="shHr" step="0.1" placeholder="72.5">
+						</div>
+						<div class="form-group">
+							<label>Temperature (temp):</label>
+							<input type="number" id="shTemp" step="0.1" placeholder="36.6">
+						</div>
+						<div class="form-group">
+							<label>EDA:</label>
+							<input type="number" id="shEda" step="0.01" placeholder="0.12">
+						</div>
+						<div class="form-group">
+							<label>Label:</label>
+							<input type="text" id="shLabel" placeholder="normal">
+						</div>
+						<div class="form-group">
+							<label>Confidence Level (0-1):</label>
+							<input type="number" id="shConfidence" step="0.01" placeholder="0.95">
+						</div>
+						<div class="form-group">
+							<label>Notes:</label>
+							<textarea id="shNotes" rows="2" placeholder="Optional notes"></textarea>
+						</div>
+						<button onclick="createStressHistory()">Create Stress History</button>
+					</div>
+
+					<div class="test-form">
+						<h3>Update/Delete Stress History</h3>
+						<div class="form-group">
+							<label>Record ID:</label>
+							<input type="number" id="shUpdateId" placeholder="1">
+						</div>
+						<div class="form-group">
+							<label>Updated Notes:</label>
+							<textarea id="shUpdateNotes" rows="2" placeholder="Updated notes..."></textarea>
+						</div>
+						<button onclick="updateStressHistory()">Update Stress History</button>
+						<button onclick="deleteStressHistory()" style="background: #e74c3c;">Delete Stress History</button>
+					</div>
+				</div>
+
+				<div class="api-section">
 					<h2>Test API</h2>
 					
 					<div class="test-form">
@@ -259,6 +333,107 @@
 			
 			// Load app infos on page load
 			window.addEventListener('load', loadAppInfos);
+
+			// --- Stress history UI functions ---
+
+			async function loadStressHistories() {
+				try {
+					const response = await fetch(`${API_BASE}/api/stress-history`);
+					const data = await response.json();
+					if (data.success) {
+						const list = data.data;
+						const container = document.getElementById('stressList');
+						if (!container) return;
+						if (list.length === 0) {
+							container.innerHTML = '<p>No stress history records found.</p>';
+						} else {
+							container.innerHTML = list.map(item => `
+								<div class="app-item">
+									<h4>Record ${item.id} - ${item.label || 'N/A'}</h4>
+									<p><strong>Timestamp:</strong> ${item.timestamp}</p>
+									<p><strong>HR:</strong> ${item.hr}</p>
+									<p><strong>Temp:</strong> ${item.temp}</p>
+									<p><strong>EDA:</strong> ${item.eda}</p>
+									<p><strong>Confidence:</strong> ${item.confidence_level}</p>
+									<p><strong>Notes:</strong> ${item.notes || 'N/A'}</p>
+								</div>
+							`).join('');
+						}
+					}
+					showResult(data);
+				} catch (error) {
+					showResult({error: error.message}, true);
+				}
+			}
+
+			async function createStressHistory() {
+				const data = {
+					hr: parseFloat(document.getElementById('shHr').value) || undefined,
+					temp: parseFloat(document.getElementById('shTemp').value) || undefined,
+					eda: parseFloat(document.getElementById('shEda').value) || undefined,
+					label: document.getElementById('shLabel').value || undefined,
+					confidence_level: parseFloat(document.getElementById('shConfidence').value) || undefined,
+					notes: document.getElementById('shNotes').value || undefined
+				};
+				try {
+					const response = await fetch(`${API_BASE}/api/stress-history`, {
+						method: 'POST',
+						headers: {'Content-Type': 'application/json'},
+						body: JSON.stringify(data)
+					});
+					const result = await response.json();
+					showResult(result);
+					if (result.success) {
+						// timestamp is server-generated
+						document.getElementById('shHr').value = '';
+						document.getElementById('shTemp').value = '';
+						document.getElementById('shEda').value = '';
+						document.getElementById('shLabel').value = '';
+						document.getElementById('shConfidence').value = '';
+						document.getElementById('shNotes').value = '';
+						loadStressHistories();
+					}
+				} catch (error) {
+					showResult({error: error.message}, true);
+				}
+			}
+
+			async function updateStressHistory() {
+				const id = document.getElementById('shUpdateId').value;
+				if (!id) { alert('Record ID is required'); return; }
+				const data = {
+					notes: document.getElementById('shUpdateNotes').value || undefined
+				};
+				try {
+					const response = await fetch(`${API_BASE}/api/stress-history/${id}`, {
+						method: 'PUT',
+						headers: {'Content-Type': 'application/json'},
+						body: JSON.stringify(data)
+					});
+					const result = await response.json();
+					showResult(result);
+					if (result.success) loadStressHistories();
+				} catch (error) {
+					showResult({error: error.message}, true);
+				}
+			}
+
+			async function deleteStressHistory() {
+				const id = document.getElementById('shUpdateId').value;
+				if (!id) { alert('Record ID is required'); return; }
+				if (!confirm('Delete this stress history record?')) return;
+				try {
+					const response = await fetch(`${API_BASE}/api/stress-history/${id}`, { method: 'DELETE' });
+					const result = await response.json();
+					showResult(result);
+					if (result.success) loadStressHistories();
+				} catch (error) {
+					showResult({error: error.message}, true);
+				}
+			}
+
+			// load stress histories when page loads as well
+			window.addEventListener('load', loadStressHistories);
 		</script>
 	</body>
 </html>

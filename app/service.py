@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Optional, List, Dict, Any
 from . import db
-from .models import AppInfo
+from .models import AppInfo, HistoryStress
 
 
 class AppInfoService:
@@ -79,4 +79,86 @@ class AppInfoService:
             'contact': app_info.contact,
             'created_at': app_info.created_at.isoformat() if app_info.created_at else None,
             'updated_at': app_info.updated_at.isoformat() if app_info.updated_at else None
+        }
+
+
+class StressHistoryService:
+    """Service class for handling stress_history CRUD operations."""
+
+    @staticmethod
+    def get_all():
+        histories = HistoryStress.query.order_by(HistoryStress.timestamp.desc()).all()
+        return [StressHistoryService._to_dict(h) for h in histories]
+
+    @staticmethod
+    def get_by_id(rec_id: int):
+        rec = HistoryStress.query.get(rec_id)
+        return StressHistoryService._to_dict(rec) if rec else None
+
+    @staticmethod
+    def create(data: dict):
+        # For create: timestamp is set server-side to UTC now.
+        ts_val = datetime.utcnow()
+
+        rec = HistoryStress(
+            timestamp=ts_val,
+            hr=data.get('hr'),
+            temp=data.get('temp'),
+            eda=data.get('eda'),
+            label=data.get('label'),
+            confidence_level=data.get('confidence_level'),
+            notes=data.get('notes') or ''
+        )
+        db.session.add(rec)
+        db.session.commit()
+        return StressHistoryService._to_dict(rec)
+
+    @staticmethod
+    def update(rec_id: int, data: dict):
+        rec = HistoryStress.query.get(rec_id)
+        if not rec:
+            return None
+
+        if 'timestamp' in data:
+            try:
+                rec.timestamp = datetime.fromisoformat(data['timestamp'])
+            except Exception:
+                pass
+        if 'hr' in data:
+            rec.hr = data.get('hr')
+        if 'temp' in data:
+            rec.temp = data.get('temp')
+        if 'eda' in data:
+            rec.eda = data.get('eda')
+        if 'label' in data:
+            rec.label = data.get('label')
+        if 'confidence_level' in data:
+            rec.confidence_level = data.get('confidence_level')
+        if 'notes' in data:
+            rec.notes = data.get('notes')
+
+        db.session.commit()
+        return StressHistoryService._to_dict(rec)
+
+    @staticmethod
+    def delete(rec_id: int) -> bool:
+        rec = HistoryStress.query.get(rec_id)
+        if not rec:
+            return False
+        db.session.delete(rec)
+        db.session.commit()
+        return True
+
+    @staticmethod
+    def _to_dict(rec: HistoryStress):
+        return {
+            'id': rec.id,
+            'timestamp': rec.timestamp.isoformat() if rec.timestamp else None,
+            'hr': rec.hr,
+            'temp': rec.temp,
+            'eda': rec.eda,
+            'label': rec.label,
+            'confidence_level': rec.confidence_level,
+            'notes': rec.notes or '',
+            'created_at': rec.created_at.isoformat() if rec.created_at else None
         }

@@ -1,5 +1,5 @@
 from flask import Blueprint, render_template, request, jsonify
-from .service import AppInfoService
+from .service import AppInfoService, StressHistoryService
 
 main = Blueprint('main', __name__)
 
@@ -131,3 +131,59 @@ def api_status():
 			'success': False,
 			'error': str(e)
 		}), 500
+
+
+# RESTful API endpoints for stress_history CRUD
+
+@main.route('/api/stress-history', methods=['GET'])
+def get_stress_histories():
+	try:
+		items = StressHistoryService.get_all()
+		return jsonify({'success': True, 'data': items})
+	except Exception as e:
+		return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@main.route('/api/stress-history/<int:rec_id>', methods=['GET'])
+def get_stress_history(rec_id):
+	try:
+		item = StressHistoryService.get_by_id(rec_id)
+		if item:
+			return jsonify({'success': True, 'data': item})
+		return jsonify({'success': False, 'error': 'Record not found'}), 404
+	except Exception as e:
+		return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@main.route('/api/stress-history', methods=['POST'])
+def create_stress_history():
+	try:
+		data = request.get_json() or {}
+		# timestamp is optional; service will set if missing/invalid
+		item = StressHistoryService.create(data)
+		return jsonify({'success': True, 'data': item}), 201
+	except Exception as e:
+		return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@main.route('/api/stress-history/<int:rec_id>', methods=['PUT'])
+def update_stress_history(rec_id):
+	try:
+		data = request.get_json() or {}
+		item = StressHistoryService.update(rec_id, data)
+		if item:
+			return jsonify({'success': True, 'data': item})
+		return jsonify({'success': False, 'error': 'Record not found'}), 404
+	except Exception as e:
+		return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@main.route('/api/stress-history/<int:rec_id>', methods=['DELETE'])
+def delete_stress_history(rec_id):
+	try:
+		ok = StressHistoryService.delete(rec_id)
+		if ok:
+			return jsonify({'success': True, 'message': 'Record deleted'})
+		return jsonify({'success': False, 'error': 'Record not found'}), 404
+	except Exception as e:
+		return jsonify({'success': False, 'error': str(e)}), 500
