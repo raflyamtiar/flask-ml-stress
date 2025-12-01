@@ -207,6 +207,22 @@ def predict_stress():
 			return jsonify({'success': False, 'error': 'hr, temp and eda must be numbers'}), 400
 
 		result = StressModelService.predict(hr, temp, eda)
-		return jsonify({'success': True, 'data': result})
+
+		# Automatically save prediction result to stress_history
+		history_data = {
+			'hr': result['hr'],
+			'temp': result['temp'],
+			'eda': result['eda'],
+			'label': result['label'],
+			'confidence_level': result['confidence_level'],
+			'notes': data.get('notes', '')  # Optional notes from request
+		}
+		saved_history = StressHistoryService.create(history_data)
+
+		return jsonify({
+			'success': True,
+			'data': result,
+			'history_id': saved_history['id']
+		})
 	except Exception as e:
 		return jsonify({'success': False, 'error': str(e)}), 500
