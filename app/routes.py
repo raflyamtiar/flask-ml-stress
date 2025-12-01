@@ -1,7 +1,117 @@
-from flask import Blueprint, render_template
+from flask import Blueprint, render_template, request, jsonify
+from .service import AppInfoService
 
 main = Blueprint('main', __name__)
 
 @main.route('/')
 def index():
 	return render_template('index.html')
+
+# RESTful API endpoints for app_info CRUD
+
+@main.route('/api/app-info', methods=['GET'])
+def get_app_infos():
+	"""Get all app info records."""
+	try:
+		app_infos = AppInfoService.get_all()
+		return jsonify({
+			'success': True,
+			'data': app_infos
+		})
+	except Exception as e:
+		return jsonify({
+			'success': False,
+			'error': str(e)
+		}), 500
+
+@main.route('/api/app-info/<int:app_id>', methods=['GET'])
+def get_app_info(app_id):
+	"""Get a specific app info record by ID."""
+	try:
+		app_info = AppInfoService.get_by_id(app_id)
+		if app_info:
+			return jsonify({
+				'success': True,
+				'data': app_info
+			})
+		else:
+			return jsonify({
+				'success': False,
+				'error': 'App info not found'
+			}), 404
+	except Exception as e:
+		return jsonify({
+			'success': False,
+			'error': str(e)
+		}), 500
+
+@main.route('/api/app-info', methods=['POST'])
+def create_app_info():
+	"""Create a new app info record."""
+	try:
+		data = request.get_json()
+		if not data or 'app_name' not in data:
+			return jsonify({
+				'success': False,
+				'error': 'app_name is required'
+			}), 400
+		
+		app_info = AppInfoService.create(data)
+		return jsonify({
+			'success': True,
+			'data': app_info
+		}), 201
+	except Exception as e:
+		return jsonify({
+			'success': False,
+			'error': str(e)
+		}), 500
+
+@main.route('/api/app-info/<int:app_id>', methods=['PUT'])
+def update_app_info(app_id):
+	"""Update an existing app info record."""
+	try:
+		data = request.get_json()
+		if not data:
+			return jsonify({
+				'success': False,
+				'error': 'No data provided'
+			}), 400
+		
+		app_info = AppInfoService.update(app_id, data)
+		if app_info:
+			return jsonify({
+				'success': True,
+				'data': app_info
+			})
+		else:
+			return jsonify({
+				'success': False,
+				'error': 'App info not found'
+			}), 404
+	except Exception as e:
+		return jsonify({
+			'success': False,
+			'error': str(e)
+		}), 500
+
+@main.route('/api/app-info/<int:app_id>', methods=['DELETE'])
+def delete_app_info(app_id):
+	"""Delete an app info record."""
+	try:
+		success = AppInfoService.delete(app_id)
+		if success:
+			return jsonify({
+				'success': True,
+				'message': 'App info deleted successfully'
+			})
+		else:
+			return jsonify({
+				'success': False,
+				'error': 'App info not found'
+			}), 404
+	except Exception as e:
+		return jsonify({
+			'success': False,
+			'error': str(e)
+		}), 500

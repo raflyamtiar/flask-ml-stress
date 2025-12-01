@@ -3,14 +3,262 @@
 	<head>
 		<meta charset="utf-8">
 		<meta name="viewport" content="width=device-width,initial-scale=1">
-		<title>Flask App</title>
+		<title>Flask Stress App</title>
 		<link rel="stylesheet" href="/static/style.css">
+		<style>
+			body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; margin: 0; padding: 20px; background: #f5f5f5; }
+			.container { max-width: 1200px; margin: 0 auto; background: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+			h1 { color: #2c3e50; margin-bottom: 10px; }
+			h2 { color: #34495e; border-bottom: 2px solid #3498db; padding-bottom: 5px; }
+			.api-section { margin: 30px 0; }
+			.endpoint { background: #ecf0f1; padding: 15px; margin: 10px 0; border-radius: 5px; border-left: 4px solid #3498db; }
+			.method { display: inline-block; padding: 4px 8px; border-radius: 4px; color: white; font-weight: bold; margin-right: 10px; }
+			.get { background: #27ae60; }
+			.post { background: #e74c3c; }
+			.put { background: #f39c12; }
+			.delete { background: #e67e22; }
+			.test-form { background: #f8f9fa; padding: 20px; border-radius: 5px; margin: 20px 0; }
+			.form-group { margin: 15px 0; }
+			label { display: block; font-weight: bold; margin-bottom: 5px; }
+			input, textarea, select { width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; }
+			button { background: #3498db; color: white; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; margin: 5px; }
+			button:hover { background: #2980b9; }
+			.result { margin-top: 15px; padding: 10px; border-radius: 4px; white-space: pre-wrap; font-family: monospace; }
+			.success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+			.error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+			.app-list { margin: 20px 0; }
+			.app-item { background: #fff; border: 1px solid #ddd; padding: 15px; margin: 10px 0; border-radius: 5px; }
+			.app-item h4 { margin: 0 0 10px 0; color: #2c3e50; }
+		</style>
 	</head>
 	<body>
-		<main>
-			<h1>Welcome — Flask app is running</h1>
-			<p>This is a minimal scaffold. Edit <code>app/routes.py</code> and templates to continue.</p>
-		</main>
-		<script src="/static/script.js"></script>
+		<div class="container">
+			<main>
+				<h1>Flask Stress App - API Interface</h1>
+				<p>RESTful API for managing application information and stress test data.</p>
+				
+				<div class="api-section">
+					<h2>App Info API Endpoints</h2>
+					
+					<div class="endpoint">
+						<span class="method get">GET</span>
+						<strong>/api/app-info</strong> - Get all app info records
+					</div>
+					
+					<div class="endpoint">
+						<span class="method get">GET</span>
+						<strong>/api/app-info/{id}</strong> - Get specific app info record
+					</div>
+					
+					<div class="endpoint">
+						<span class="method post">POST</span>
+						<strong>/api/app-info</strong> - Create new app info record
+					</div>
+					
+					<div class="endpoint">
+						<span class="method put">PUT</span>
+						<strong>/api/app-info/{id}</strong> - Update existing app info record
+					</div>
+					
+					<div class="endpoint">
+						<span class="method delete">DELETE</span>
+						<strong>/api/app-info/{id}</strong> - Delete app info record
+					</div>
+				</div>
+
+				<div class="api-section">
+					<h2>Test API</h2>
+					
+					<div class="test-form">
+						<h3>Load App Info Records</h3>
+						<button onclick="loadAppInfos()">Get All App Info</button>
+						<div id="appList" class="app-list"></div>
+					</div>
+
+					<div class="test-form">
+						<h3>Create New App Info</h3>
+						<div class="form-group">
+							<label>App Name (required):</label>
+							<input type="text" id="appName" placeholder="My Application" required>
+						</div>
+						<div class="form-group">
+							<label>App Version:</label>
+							<input type="text" id="appVersion" placeholder="1.0.0">
+						</div>
+						<div class="form-group">
+							<label>Description:</label>
+							<textarea id="description" placeholder="Application description..." rows="3"></textarea>
+						</div>
+						<div class="form-group">
+							<label>Owner:</label>
+							<input type="text" id="owner" placeholder="Developer Name">
+						</div>
+						<div class="form-group">
+							<label>Contact:</label>
+							<input type="email" id="contact" placeholder="contact@example.com">
+						</div>
+						<button onclick="createAppInfo()">Create App Info</button>
+					</div>
+
+					<div class="test-form">
+						<h3>Update/Delete App Info</h3>
+						<div class="form-group">
+							<label>App ID:</label>
+							<input type="number" id="updateId" placeholder="1">
+						</div>
+						<div class="form-group">
+							<label>Updated Description:</label>
+							<textarea id="updateDescription" placeholder="Updated description..." rows="2"></textarea>
+						</div>
+						<button onclick="updateAppInfo()">Update App Info</button>
+						<button onclick="deleteAppInfo()" style="background: #e74c3c;">Delete App Info</button>
+					</div>
+
+					<div id="result" class="result" style="display: none;"></div>
+				</div>
+			</main>
+		</div>
+		
+		<script>
+			const API_BASE = window.location.origin;
+			
+			function showResult(data, isError = false) {
+				const resultDiv = document.getElementById('result');
+				resultDiv.style.display = 'block';
+				resultDiv.className = 'result ' + (isError ? 'error' : 'success');
+				resultDiv.textContent = JSON.stringify(data, null, 2);
+			}
+			
+			async function loadAppInfos() {
+				try {
+					const response = await fetch(`${API_BASE}/api/app-info`);
+					const data = await response.json();
+					
+					if (data.success) {
+						const appListDiv = document.getElementById('appList');
+						if (data.data.length === 0) {
+							appListDiv.innerHTML = '<p>No app info records found.</p>';
+						} else {
+							appListDiv.innerHTML = data.data.map(app => `
+								<div class="app-item">
+									<h4>${app.app_name} ${app.app_version || ''}</h4>
+									<p><strong>ID:</strong> ${app.id}</p>
+									<p><strong>Description:</strong> ${app.description || 'N/A'}</p>
+									<p><strong>Owner:</strong> ${app.owner || 'N/A'}</p>
+									<p><strong>Contact:</strong> ${app.contact || 'N/A'}</p>
+									<p><strong>Created:</strong> ${app.created_at}</p>
+								</div>
+							`).join('');
+						}
+					}
+					showResult(data);
+				} catch (error) {
+					showResult({error: error.message}, true);
+				}
+			}
+			
+			async function createAppInfo() {
+				const appName = document.getElementById('appName').value;
+				if (!appName) {
+					alert('App name is required');
+					return;
+				}
+				
+				const data = {
+					app_name: appName,
+					app_version: document.getElementById('appVersion').value,
+					description: document.getElementById('description').value,
+					owner: document.getElementById('owner').value,
+					contact: document.getElementById('contact').value
+				};
+				
+				try {
+					const response = await fetch(`${API_BASE}/api/app-info`, {
+						method: 'POST',
+						headers: {
+							'Content-Type': 'application/json'
+						},
+						body: JSON.stringify(data)
+					});
+					const result = await response.json();
+					showResult(result);
+					
+					if (result.success) {
+						// Clear form
+						document.getElementById('appName').value = '';
+						document.getElementById('appVersion').value = '';
+						document.getElementById('description').value = '';
+						document.getElementById('owner').value = '';
+						document.getElementById('contact').value = '';
+						// Reload list
+						loadAppInfos();
+					}
+				} catch (error) {
+					showResult({error: error.message}, true);
+				}
+			}
+			
+			async function updateAppInfo() {
+				const id = document.getElementById('updateId').value;
+				const description = document.getElementById('updateDescription').value;
+				
+				if (!id) {
+					alert('App ID is required');
+					return;
+				}
+				
+				const data = { description };
+				
+				try {
+					const response = await fetch(`${API_BASE}/api/app-info/${id}`, {
+						method: 'PUT',
+						headers: {
+							'Content-Type': 'application/json'
+						},
+						body: JSON.stringify(data)
+					});
+					const result = await response.json();
+					showResult(result);
+					
+					if (result.success) {
+						loadAppInfos();
+					}
+				} catch (error) {
+					showResult({error: error.message}, true);
+				}
+			}
+			
+			async function deleteAppInfo() {
+				const id = document.getElementById('updateId').value;
+				
+				if (!id) {
+					alert('App ID is required');
+					return;
+				}
+				
+				if (!confirm('Are you sure you want to delete this app info?')) {
+					return;
+				}
+				
+				try {
+					const response = await fetch(`${API_BASE}/api/app-info/${id}`, {
+						method: 'DELETE'
+					});
+					const result = await response.json();
+					showResult(result);
+					
+					if (result.success) {
+						loadAppInfos();
+						document.getElementById('updateId').value = '';
+						document.getElementById('updateDescription').value = '';
+					}
+				} catch (error) {
+					showResult({error: error.message}, true);
+				}
+			}
+			
+			// Load app infos on page load
+			window.addEventListener('load', loadAppInfos);
+		</script>
 	</body>
 </html>
