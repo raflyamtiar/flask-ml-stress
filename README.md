@@ -27,3 +27,19 @@ Example (PowerShell):
 Copy-Item .env.example .env
 $env:SECRET_KEY = 'your-secret'
 ```
+
+## Using the setup script
+
+Run the `setup.ps1` script from the project root to create and populate the virtual environment and to create an `instance/app.db` SQLite file if missing.
+
+To run the script (no persistent activation):
+```powershell
+.\setup.ps1
+```
+
+To run and keep the virtual environment activated in your current PowerShell session, dot-source the script:
+```powershell
+. .\setup.ps1
+```
+
+The script prints colored status messages (yellow = action, cyan = notice, green = complete).
