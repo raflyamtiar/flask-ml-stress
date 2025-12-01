@@ -212,6 +212,46 @@ curl -X PUT http://127.0.0.1:5000/api/stress-history/1 -H "Content-Type: applica
 curl -X DELETE http://127.0.0.1:5000/api/stress-history/1
 ```
 
+### ML model prediction
+Predict stress label using the included scaler and RandomForest classifier stored in `models/`.
+
+Endpoint:
+```http
+POST /api/predict-stress
+Content-Type: application/json
+```
+Request body (JSON):
+```json
+{
+  "hr": 70.0,
+  "temp": 36.5,
+  "eda": 5.0
+}
+```
+Response:
+```json
+{
+  "success": true,
+  "data": {
+    "hr": 70.0,
+    "temp": 36.5,
+    "eda": 5.0,
+    "label": "No Stress",
+    "confidence_level": 0.54
+  }
+}
+```
+
+Notes:
+- The server loads `models/scaler_model.pkl` and `models/classification_rf_model.pkl` from the project `models/` folder.
+- The request should only include `hr`, `temp`, and `eda` as numbers. The server sets the record timestamp when storing to DB (if used).
+- Requires `joblib` and `pandas` installed in the environment.
+
+Curl example:
+```powershell
+curl -X POST http://127.0.0.1:5000/api/predict-stress -H "Content-Type: application/json" -d '{"hr":70,"temp":36.5,"eda":5}'
+```
+
 ### Error Responses
 All endpoints return error responses in this format:
 ```json

@@ -141,6 +141,31 @@
 				</div>
 
 				<div class="api-section">
+					<h2>ML Predict Endpoint</h2>
+					<div class="endpoint">
+						<span class="method post">POST</span>
+						<strong>/api/predict-stress</strong> - Predict stress label from `hr`, `temp`, `eda`
+					</div>
+
+					<div class="test-form">
+						<h3>Predict Stress (Quick)</h3>
+						<div class="form-group">
+							<label>HR:</label>
+							<input type="number" id="predHr" step="0.1" placeholder="70">
+						</div>
+						<div class="form-group">
+							<label>Temperature:</label>
+							<input type="number" id="predTemp" step="0.1" placeholder="36.5">
+						</div>
+						<div class="form-group">
+							<label>EDA:</label>
+							<input type="number" id="predEda" step="0.1" placeholder="5">
+						</div>
+						<button onclick="predictStress()">Predict Stress</button>
+					</div>
+				</div>
+
+				<div class="api-section">
 					<h2>Test API</h2>
 					
 					<div class="test-form">
@@ -434,6 +459,23 @@
 
 			// load stress histories when page loads as well
 			window.addEventListener('load', loadStressHistories);
+
+			async function predictStress() {
+				const hr = document.getElementById('predHr').value;
+				const temp = document.getElementById('predTemp').value;
+				const eda = document.getElementById('predEda').value;
+				if (!hr || !temp || !eda) { alert('Please provide hr, temp and eda'); return; }
+				const payload = { hr: parseFloat(hr), temp: parseFloat(temp), eda: parseFloat(eda) };
+				try {
+					const response = await fetch(`${API_BASE}/api/predict-stress`, {
+						method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload)
+					});
+					const result = await response.json();
+					showResult(result);
+				} catch (err) {
+					showResult({error: err.message}, true);
+				}
+			}
 		</script>
 	</body>
 </html>
