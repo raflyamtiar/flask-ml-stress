@@ -20,7 +20,7 @@ class AppInfo(db.Model):
 
 
 class HistoryStress(db.Model):
-    __tablename__ = 'history_stress'
+    __tablename__ = 'stress_history'
 
     id = db.Column(db.Integer, primary_key=True)
     timestamp = db.Column(db.DateTime, nullable=False)
