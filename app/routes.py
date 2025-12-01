@@ -115,3 +115,19 @@ def delete_app_info(app_id):
 			'success': False,
 			'error': str(e)
 		}), 500
+
+
+@main.route('/api', methods=['GET'])
+def api_status():
+	"""Simple API status endpoint."""
+	try:
+		return jsonify({
+			'success': True,
+			'status': 'ok',
+			'message': 'API is running'
+		})
+	except Exception as e:
+		return jsonify({
+			'success': False,
+			'error': str(e)
+		}), 500
