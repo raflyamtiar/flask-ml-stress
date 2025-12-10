@@ -51,13 +51,8 @@ def create_app(config_object=None):
 	# Initialize SocketIO with CORS support
 	socketio.init_app(app, cors_allowed_origins="*", async_mode='eventlet')
 
-	try:
-		from .routes import main as main_bp
-
-		app.register_blueprint(main_bp)
-	except Exception:
-		# If blueprint import fails, we still want the app to be importable
-		pass
+	from .routes import main as main_bp
+	app.register_blueprint(main_bp)
 
 	# Import models so they are registered on the SQLAlchemy metadata
 	# This ensures `flask db migrate --autogenerate` sees the models.
