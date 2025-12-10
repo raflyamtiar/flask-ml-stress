@@ -2,6 +2,8 @@
 # Environment / secrets
 .env
 
+migrations/
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
