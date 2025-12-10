@@ -154,6 +154,14 @@ class StressHistoryService:
         return True
 
     @staticmethod
+    def get_recent_count(hours: int = 24) -> int:
+        """Get count of records from the last N hours."""
+        from datetime import timedelta
+        cutoff_time = datetime.utcnow() - timedelta(hours=hours)
+        count = HistoryStress.query.filter(HistoryStress.timestamp >= cutoff_time).count()
+        return count
+
+    @staticmethod
     def _to_dict(rec: HistoryStress):
         return {
             'id': rec.id,
