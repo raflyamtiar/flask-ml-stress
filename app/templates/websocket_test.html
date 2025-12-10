@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>WebSocket Test - Stress Monitor</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.js"></script>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 20px;
+        background-color: #f5f5f5;
+      }
+      .container {
+        background: white;
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        margin-bottom: 20px;
+      }
+      .status {
+        padding: 10px;
+        border-radius: 4px;
+        margin-bottom: 10px;
+      }
+      .connected {
+        background-color: #d4edda;
+        color: #155724;
+      }
+      .disconnected {
+        background-color: #f8d7da;
+        color: #721c24;
+      }
+      .alert {
+        background-color: #fff3cd;
+        color: #856404;
+      }
+      .log {
+        background-color: #f8f9fa;
+        padding: 10px;
+        border-radius: 4px;
+        height: 200px;
+        overflow-y: auto;
+        font-family: monospace;
+        font-size: 12px;
+        border: 1px solid #dee2e6;
+      }
+      button {
+        background-color: #007bff;
+        color: white;
+        border: none;
+        padding: 8px 16px;
+        border-radius: 4px;
+        cursor: pointer;
+        margin: 5px;
+      }
+      button:hover {
+        background-color: #0056b3;
+      }
+      button:disabled {
+        background-color: #6c757d;
+        cursor: not-allowed;
+      }
+      input,
+      select {
+        padding: 8px;
+        border: 1px solid #ced4da;
+        border-radius: 4px;
+        margin: 5px;
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 20px;
+      }
+      .sensor-data {
+        background: #e7f3ff;
+        padding: 15px;
+        border-radius: 4px;
+        margin: 10px 0;
+      }
+      .stress-alert {
+        background: #ffe6e6;
+        padding: 15px;
+        border-radius: 4px;
+        margin: 10px 0;
+        border-left: 4px solid #dc3545;
+      }
+      .stats {
+        background: #f0f8f0;
+        padding: 10px;
+        border-radius: 4px;
+        margin: 10px 0;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>🔌 WebSocket Test - Stress Monitoring Server</h1>
+
+    <div class="container">
+      <h2>Connection Status</h2>
+      <div id="status" class="status disconnected">Disconnected</div>
+      <div id="stats" class="stats">No connection stats available</div>
+
+      <button id="connectBtn" onclick="connect()">Connect as Frontend</button>
+      <button id="disconnectBtn" onclick="disconnect()" disabled>
+        Disconnect
+      </button>
+      <button onclick="ping()">Ping Server</button>
+      <button onclick="requestHistory()">Request History</button>
+      <button onclick="subscribeAlerts()">Subscribe to Alerts</button>
+    </div>
+
+    <div class="grid">
+      <div class="container">
+        <h3>ESP32 Simulator</h3>
+        <div>
+          <label
+            >Heart Rate:
+            <input type="number" id="hr" value="75.5" step="0.1" /></label
+          ><br />
+          <label
+            >Temperature:
+            <input type="number" id="temp" value="36.2" step="0.1" /></label
+          ><br />
+          <label
+            >EDA:
+            <input type="number" id="eda" value="0.45" step="0.01" /></label
+          ><br />
+          <label
+            >Device ID:
+            <input type="text" id="deviceId" value="ESP32_TEST" /></label
+          ><br />
+          <button onclick="simulateESP32()">Simulate ESP32 Data</button>
+          <button onclick="startAutoSend()" id="autoSendBtn">
+            Start Auto Send (5s)
+          </button>
+          <button onclick="stopAutoSend()" id="stopAutoBtn" disabled>
+            Stop Auto Send
+          </button>
+        </div>
+      </div>
+
+      <div class="container">
+        <h3>Real-time Data</h3>
+        <div id="sensorData">No sensor data received yet</div>
+        <div id="stressAlert"></div>
+      </div>
+    </div>
+
+    <div class="container">
+      <h3>History Data</h3>
+      <div>
+        <label
+          >Limit:
+          <input type="number" id="historyLimit" value="10" min="1" max="100"
+        /></label>
+        <button onclick="requestHistory()">Get History</button>
+      </div>
+      <div id="historyData">No history data loaded</div>
+    </div>
+
+    <div class="container">
+      <h3>Connection Log</h3>
+      <button onclick="clearLog()">Clear Log</button>
+      <div id="log" class="log"></div>
+    </div>
+
+    <script>
+      let socket = null;
+      let autoSendInterval = null;
+
+      function log(message) {
+        const logDiv = document.getElementById("log");
+        const timestamp = new Date().toLocaleTimeString();
+        logDiv.innerHTML += `[${timestamp}] ${message}\n`;
+        logDiv.scrollTop = logDiv.scrollHeight;
+      }
+
+      function clearLog() {
+        document.getElementById("log").innerHTML = "";
+      }
+
+      function updateStatus(status, message) {
+        const statusDiv = document.getElementById("status");
+        statusDiv.className = `status ${status}`;
+        statusDiv.textContent = message;
+      }
+
+      function connect() {
+        if (socket) {
+          socket.disconnect();
+        }
+
+        log("Connecting to server...");
+        socket = io("http://127.0.0.1:5000", {
+          query: { type: "frontend" },
+        });
+
+        socket.on("connect", () => {
+          log("✓ Connected to server as frontend");
+          updateStatus("connected", "Connected as Frontend");
+          document.getElementById("connectBtn").disabled = true;
+          document.getElementById("disconnectBtn").disabled = false;
+        });
+
+        socket.on("disconnect", () => {
+          log("✗ Disconnected from server");
+          updateStatus("disconnected", "Disconnected");
+          document.getElementById("connectBtn").disabled = false;
+          document.getElementById("disconnectBtn").disabled = true;
+        });
+
+        socket.on("connection_status", (data) => {
+          log(`📋 Connection status: ${data.message}`);
+        });
+
+        socket.on("client_stats", (data) => {
+          const statsDiv = document.getElementById("stats");
+          statsDiv.innerHTML = `
+                    Frontend clients: ${data.frontend_clients} | 
+                    ESP32 clients: ${data.esp32_clients} | 
+                    Total: ${data.total_clients}
+                `;
+          log(
+            `📊 Client stats updated - Frontend: ${data.frontend_clients}, ESP32: ${data.esp32_clients}`
+          );
+        });
+
+        socket.on("new_sensor_data", (data) => {
+          log(
+            `📡 New sensor data: HR=${data.hr}, Temp=${data.temp}, EDA=${data.eda}, Stress=${data.stress_level} (${data.confidence}%)`
+          );
+
+          const sensorDiv = document.getElementById("sensorData");
+          sensorDiv.innerHTML = `
+                    <div class="sensor-data">
+                        <strong>Latest Sensor Reading</strong><br>
+                        <strong>Time:</strong> ${new Date(
+                          data.timestamp
+                        ).toLocaleString()}<br>
+                        <strong>Heart Rate:</strong> ${data.hr} BPM<br>
+                        <strong>Temperature:</strong> ${data.temp}°C<br>
+                        <strong>EDA:</strong> ${data.eda}<br>
+                        <strong>Stress Level:</strong> ${data.stress_level}<br>
+                        <strong>Confidence:</strong> ${data.confidence}%<br>
+                        <strong>Device:</strong> ${data.device_id}
+                    </div>
+                `;
+        });
+
+        socket.on("stress_alert", (data) => {
+          log(
+            `🚨 STRESS ALERT: ${data.level} (${data.confidence}%) - ${data.message}`
+          );
+
+          const alertDiv = document.getElementById("stressAlert");
+          alertDiv.innerHTML = `
+                    <div class="stress-alert">
+                        <strong>🚨 STRESS ALERT</strong><br>
+                        <strong>Level:</strong> ${data.level}<br>
+                        <strong>Confidence:</strong> ${data.confidence}%<br>
+                        <strong>Time:</strong> ${new Date(
+                          data.timestamp
+                        ).toLocaleString()}<br>
+                        <strong>Message:</strong> ${data.message}
+                    </div>
+                `;
+        });
+
+        socket.on("history_data", (data) => {
+          log(`📚 Received ${data.count} history records`);
+
+          const historyDiv = document.getElementById("historyData");
+          let html = `<h4>History (${data.count} records)</h4>`;
+
+          data.data.forEach((record) => {
+            html += `
+                        <div style="border: 1px solid #ddd; padding: 10px; margin: 5px 0; border-radius: 4px;">
+                            <strong>${new Date(
+                              record.timestamp
+                            ).toLocaleString()}</strong> - 
+                            HR: ${record.hr}, Temp: ${record.temp}, EDA: ${
+              record.eda
+            }, 
+                            Stress: ${record.stress_level} (${
+              record.confidence
+            }%)
+                        </div>
+                    `;
+          });
+
+          historyDiv.innerHTML = html;
+        });
+
+        socket.on("pong", (data) => {
+          log(`🏓 Pong received: ${data.timestamp}`);
+        });
+
+        socket.on("subscription_status", (data) => {
+          log(`📬 ${data.message}`);
+        });
+
+        socket.on("error", (error) => {
+          log(`❌ Error: ${error.message || error}`);
+        });
+      }
+
+      function disconnect() {
+        if (socket) {
+          socket.disconnect();
+          socket = null;
+        }
+      }
+
+      function ping() {
+        if (socket && socket.connected) {
+          socket.emit("ping");
+          log("🏓 Ping sent");
+        } else {
+          log("❌ Not connected");
+        }
+      }
+
+      function requestHistory() {
+        if (socket && socket.connected) {
+          const limit = parseInt(document.getElementById("historyLimit").value);
+          socket.emit("frontend_request_history", { limit: limit });
+          log(`📚 Requested ${limit} history records`);
+        } else {
+          log("❌ Not connected");
+        }
+      }
+
+      function subscribeAlerts() {
+        if (socket && socket.connected) {
+          socket.emit("frontend_subscribe_alerts", {});
+          log("📬 Subscribed to alerts");
+        } else {
+          log("❌ Not connected");
+        }
+      }
+
+      function simulateESP32() {
+        // Create a temporary ESP32 connection
+        const esp32Socket = io("http://127.0.0.1:5000", {
+          query: { type: "esp32" },
+        });
+
+        esp32Socket.on("connect", () => {
+          log("🤖 ESP32 simulator connected");
+
+          const data = {
+            hr: parseFloat(document.getElementById("hr").value),
+            temp: parseFloat(document.getElementById("temp").value),
+            eda: parseFloat(document.getElementById("eda").value),
+            device_id: document.getElementById("deviceId").value,
+            timestamp: new Date().toISOString(),
+          };
+
+          esp32Socket.emit("esp32_sensor_data", data);
+          log(
+            `🤖 ESP32 sent data: HR=${data.hr}, Temp=${data.temp}, EDA=${data.eda}`
+          );
+        });
+
+        esp32Socket.on("data_received", (response) => {
+          log(`🤖 ESP32 received confirmation: ${response.message}`);
+          esp32Socket.disconnect();
+        });
+
+        esp32Socket.on("error", (error) => {
+          log(`🤖 ESP32 error: ${error.message || error}`);
+          esp32Socket.disconnect();
+        });
+      }
+
+      function startAutoSend() {
+        if (autoSendInterval) return;
+
+        autoSendInterval = setInterval(() => {
+          // Simulate realistic sensor variations
+          const baseHR = 75;
+          const baseTemp = 36.5;
+          const baseEDA = 0.5;
+
+          const hr = baseHR + (Math.random() - 0.5) * 20;
+          const temp = baseTemp + (Math.random() - 0.5) * 2;
+          const eda = baseEDA + (Math.random() - 0.5) * 0.4;
+
+          document.getElementById("hr").value = hr.toFixed(1);
+          document.getElementById("temp").value = temp.toFixed(1);
+          document.getElementById("eda").value = eda.toFixed(2);
+
+          simulateESP32();
+        }, 5000);
+
+        document.getElementById("autoSendBtn").disabled = true;
+        document.getElementById("stopAutoBtn").disabled = false;
+        log("🔄 Auto-send started (every 5 seconds)");
+      }
+
+      function stopAutoSend() {
+        if (autoSendInterval) {
+          clearInterval(autoSendInterval);
+          autoSendInterval = null;
+        }
+
+        document.getElementById("autoSendBtn").disabled = false;
+        document.getElementById("stopAutoBtn").disabled = true;
+        log("⏹️ Auto-send stopped");
+      }
+
+      // Auto-connect on page load
+      window.onload = () => {
+        log("🌐 WebSocket Test Page Loaded");
+        log('💡 Click "Connect as Frontend" to start testing');
+      };
+
+      // Cleanup on page unload
+      window.onbeforeunload = () => {
+        if (socket) socket.disconnect();
+        if (autoSendInterval) clearInterval(autoSendInterval);
+      };
+    </script>
+  </body>
+</html>

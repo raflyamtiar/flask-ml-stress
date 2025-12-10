@@ -3,6 +3,8 @@ from flask import Flask
 from dotenv import load_dotenv
 import os
 from flask_sqlalchemy import SQLAlchemy
+from flask_socketio import SocketIO
+from flask_cors import CORS
 
 
 # Initialize extensions here so they can be imported from other modules
@@ -11,6 +13,7 @@ from flask_migrate import Migrate
 
 # Migrate extension (initialized in create_app)
 migrate = Migrate()
+socketio = SocketIO()
 
 
 def create_app(config_object=None):
@@ -41,6 +44,12 @@ def create_app(config_object=None):
 	# Initialize extensions
 	db.init_app(app)
 	migrate.init_app(app, db)
+	
+	# Initialize CORS for cross-origin requests (React frontend)
+	CORS(app, origins="*")
+	
+	# Initialize SocketIO with CORS support
+	socketio.init_app(app, cors_allowed_origins="*", async_mode='eventlet')
 
 	try:
 		from .routes import main as main_bp
@@ -56,6 +65,16 @@ def create_app(config_object=None):
 		from . import models  # noqa: F401
 	except Exception:
 		pass
+		
+	# Import events to register SocketIO event handlers
+	try:
+		from . import events  # noqa: F401
+	except Exception:
+		pass
 
 	return app
+
+
+# Export socketio so it can be imported by run.py
+__all__ = ['create_app', 'socketio']
 
