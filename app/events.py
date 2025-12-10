@@ -12,7 +12,6 @@ Namespaces:
 from flask_socketio import emit, Namespace
 from datetime import datetime
 
-
 # Store connected clients info (optional, for debugging/monitoring)
 connected_clients = {
     'esp32': set(),
