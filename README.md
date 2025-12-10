@@ -1,6 +1,6 @@
-# Flask Stress App (minimal scaffold)
+# Flask Stress App - Real-time Monitoring System
 
-Minimal Flask scaffold for local development.
+Flask application for real-time stress monitoring with WebSocket support for ESP32 devices and React frontend.
 
 ## Quick start (PowerShell)
 
@@ -15,6 +15,7 @@ flask run
 Open http://127.0.0.1:5000/ in your browser.
 
 ## Notes
+
 - Secrets like `SECRET_KEY` should be set via environment variables or `instance/config.py`.
 - `app/__init__.py` provides `create_app()` factory for easy testing and configuration.
 
@@ -23,6 +24,7 @@ Open http://127.0.0.1:5000/ in your browser.
 Copy `.env.example` to `.env` and edit values for local development, or set corresponding environment variables.
 
 Example (PowerShell):
+
 ```powershell
 Copy-Item .env.example .env
 $env:SECRET_KEY = 'your-secret'
@@ -33,31 +35,100 @@ $env:SECRET_KEY = 'your-secret'
 Run the `setup.ps1` script from the project root to create and populate the virtual environment and to create an `instance/app.db` SQLite file if missing.
 
 To run the script (no persistent activation):
+
 ```powershell
 .\setup.ps1
 ```
 
 To run and keep the virtual environment activated in your current PowerShell session, dot-source the script:
+
 ```powershell
 . .\setup.ps1
 ```
 
 The script prints colored status messages (yellow = action, cyan = notice, green = complete).
 
+---
+
+## 📋 Complete Endpoint Reference
+
+### HTTP REST API Endpoints
+
+| Method                  | Endpoint                   | Description                                        | Auth Required |
+| ----------------------- | -------------------------- | -------------------------------------------------- | ------------- |
+| **General**             |
+| `GET`                   | `/`                        | Serve main HTML page                               | No            |
+| `GET`                   | `/api`                     | API status check                                   | No            |
+| `GET`                   | `/api/system/status`       | System status & statistics                         | No            |
+| **App Info CRUD**       |
+| `GET`                   | `/api/app-info`            | Get all app info records                           | No            |
+| `GET`                   | `/api/app-info/{id}`       | Get specific app info by ID                        | No            |
+| `POST`                  | `/api/app-info`            | Create new app info                                | No            |
+| `PUT`                   | `/api/app-info/{id}`       | Update app info by ID                              | No            |
+| `DELETE`                | `/api/app-info/{id}`       | Delete app info by ID                              | No            |
+| **Stress History CRUD** |
+| `GET`                   | `/api/stress-history`      | Get all stress history records                     | No            |
+| `GET`                   | `/api/stress-history/{id}` | Get specific stress record                         | No            |
+| `POST`                  | `/api/stress-history`      | Create new stress record                           | No            |
+| `PUT`                   | `/api/stress-history/{id}` | Update stress record                               | No            |
+| `DELETE`                | `/api/stress-history/{id}` | Delete stress record                               | No            |
+| **ML Prediction**       |
+| `POST`                  | `/api/predict-stress`      | Predict stress from sensor data                    | No            |
+| **ESP32 HTTP Fallback** |
+| `POST`                  | `/api/esp32/data`          | HTTP fallback for ESP32 (if WebSocket unavailable) | No            |
+| **WebSocket Info**      |
+| `GET`                   | `/api/websocket/info`      | Get WebSocket connection info & events             | No            |
+| `GET`                   | `/api/websocket/test`      | WebSocket test HTML page                           | No            |
+
+### WebSocket Events (Real-time Relay)
+
+**Connection URL:** `ws://127.0.0.1:5000/socket.io/?EIO=4&transport=websocket&type={client_type}`
+
+| Event Name                | Direction         | Client Type    | Description                             | Payload                                               |
+| ------------------------- | ----------------- | -------------- | --------------------------------------- | ----------------------------------------------------- |
+| **Connection Management** |
+| `connect`                 | Server → Client   | All            | Connection established                  | Auto-emits `connection_status`                        |
+| `disconnect`              | Server → Client   | All            | Connection closed                       | Auto-updates `client_stats`                           |
+| `connection_status`       | Server → Client   | ESP32/Frontend | Connection confirmation                 | `{status, message}`                                   |
+| `client_stats`            | Server → Frontend | Frontend       | Active client counts                    | `{frontend_clients, esp32_clients, total_clients}`    |
+| **ESP32 Data Stream**     |
+| `esp32_live_data`         | ESP32 → Server    | ESP32          | Send sensor data (real-time relay only) | `{hr, temp, eda, timestamp?, device_id?}`             |
+| `live_data_received`      | Server → ESP32    | ESP32          | Confirmation of data receipt            | `{status, message}`                                   |
+| `live_sensor_data`        | Server → Frontend | Frontend       | Broadcast sensor data                   | `{timestamp, hr, temp, eda, device_id}`               |
+| **Utility Events**        |
+| `ping`                    | Client → Server   | All            | Connection health check                 | Send `2` (Engine.IO ping)                             |
+| `pong`                    | Server → Client   | All            | Ping response                           | `{timestamp}`                                         |
+| `health_check`            | Client → Server   | All            | Server health status                    | Empty or `{}`                                         |
+| `health_status`           | Server → Client   | All            | Health response                         | `{status, timestamp, connected_clients, server_info}` |
+| `error`                   | Server → Client   | All            | Error notification                      | `{message}`                                           |
+
+### WebSocket Client Types
+
+| Type       | Query Param      | Can Send                                  | Can Receive                                                              | Purpose                           |
+| ---------- | ---------------- | ----------------------------------------- | ------------------------------------------------------------------------ | --------------------------------- |
+| `esp32`    | `?type=esp32`    | `esp32_live_data`, `ping`, `health_check` | `live_data_received`, `connection_status`, `pong`, `error`               | ESP32 devices sending sensor data |
+| `frontend` | `?type=frontend` | `ping`, `health_check`                    | `live_sensor_data`, `client_stats`, `connection_status`, `pong`, `error` | React/web clients receiving data  |
+
+---
+
 ## API Documentation
 
 The application provides RESTful API endpoints for managing app information.
 
 ### Base URL
+
 When running locally: `http://127.0.0.1:5000`
 
 ### Endpoints
 
 #### Get all app info records
+
 ```http
 GET /api/app-info
 ```
+
 Response:
+
 ```json
 {
   "success": true,
@@ -77,12 +148,15 @@ Response:
 ```
 
 #### Get specific app info
+
 ```http
 GET /api/app-info/{id}
 ```
+
 Response: Same format as above but with single record in `data`.
 
 #### Create new app info
+
 ```http
 POST /api/app-info
 Content-Type: application/json
@@ -95,19 +169,22 @@ Content-Type: application/json
   "contact": "contact@example.com"
 }
 ```
+
 Response:
+
 ```json
 {
   "success": true,
   "data": {
     "id": 2,
-    "app_name": "My New App",
+    "app_name": "My New App"
     // ... other fields
   }
 }
 ```
 
 #### Update app info
+
 ```http
 PUT /api/app-info/{id}
 Content-Type: application/json
@@ -117,13 +194,17 @@ Content-Type: application/json
   "description": "Updated description"
 }
 ```
+
 Response: Same format as create.
 
 #### Delete app info
+
 ```http
 DELETE /api/app-info/{id}
 ```
+
 Response:
+
 ```json
 {
   "success": true,
@@ -132,13 +213,17 @@ Response:
 ```
 
 #### Stress history (stress_history)
+
 APIs for storing and retrieving stress test readings (heart rate, temperature, EDA, labels, etc.).
 
 Get all records
+
 ```http
 GET /api/stress-history
 ```
+
 Response:
+
 ```json
 {
   "success": true,
@@ -159,11 +244,13 @@ Response:
 ```
 
 Get specific record
+
 ```http
 GET /api/stress-history/{id}
 ```
 
 Create new record
+
 ```http
 POST /api/stress-history
 Content-Type: application/json
@@ -179,6 +266,7 @@ Content-Type: application/json
 ```
 
 Update record
+
 ```http
 PUT /api/stress-history/{id}
 Content-Type: application/json
@@ -190,11 +278,13 @@ Content-Type: application/json
 ```
 
 Delete record
+
 ```http
 DELETE /api/stress-history/{id}
 ```
 
 ### curl examples for stress history
+
 ```powershell
 # List all
 curl http://127.0.0.1:5000/api/stress-history
@@ -213,14 +303,18 @@ curl -X DELETE http://127.0.0.1:5000/api/stress-history/1
 ```
 
 ### ML model prediction
+
 Predict stress label using the included scaler and RandomForest classifier stored in `models/`.
 
 Endpoint:
+
 ```http
 POST /api/predict-stress
 Content-Type: application/json
 ```
+
 Request body (JSON):
+
 ```json
 {
   "hr": 70.0,
@@ -228,7 +322,9 @@ Request body (JSON):
   "eda": 5.0
 }
 ```
+
 Response:
+
 ```json
 {
   "success": true,
@@ -243,17 +339,21 @@ Response:
 ```
 
 Notes:
+
 - The server loads `models/scaler_model.pkl` and `models/classification_rf_model.pkl` from the project `models/` folder.
 - The request should only include `hr`, `temp`, and `eda` as numbers. The server sets the record timestamp when storing to DB (if used).
 - Requires `joblib` and `pandas` installed in the environment.
 
 Curl example:
+
 ```powershell
 curl -X POST http://127.0.0.1:5000/api/predict-stress -H "Content-Type: application/json" -d '{"hr":70,"temp":36.5,"eda":5}'
 ```
 
 ### Error Responses
+
 All endpoints return error responses in this format:
+
 ```json
 {
   "success": false,
