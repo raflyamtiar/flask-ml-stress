@@ -69,6 +69,7 @@ The script prints colored status messages (yellow = action, cyan = notice, green
 | **Stress History CRUD**       |
 | `GET`                         | `/api/stress-history`                     | Get all stress history records                     | No            |
 | `GET`                         | `/api/stress-history/{id}`                | Get specific stress record                         | No            |
+| `GET`                         | `/api/sessions/{id}/stress-history`       | Get stress history records for a session           | No            |
 | `POST`                        | `/api/stress-history`                     | Create new stress record                           | No            |
 | `PUT`                         | `/api/stress-history/{id}`                | Update stress record                               | No            |
 | `DELETE`                      | `/api/stress-history/{id}`                | Delete stress record                               | No            |

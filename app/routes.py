@@ -193,6 +193,16 @@ def delete_stress_history(rec_id):
 		return jsonify({'success': False, 'error': str(e)}), 500
 
 
+@main.route('/api/sessions/<session_id>/stress-history', methods=['GET'])
+def get_session_stress_history(session_id):
+	"""Get all stress history records for a specific session."""
+	try:
+		histories = StressHistoryService.get_by_session(session_id)
+		return jsonify({'success': True, 'data': histories})
+	except Exception as e:
+		return jsonify({'success': False, 'error': str(e)}), 500
+
+
 # --- ML model prediction endpoint ---
 @main.route('/api/predict-stress', methods=['POST'])
 def predict_stress():

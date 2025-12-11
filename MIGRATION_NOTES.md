@@ -61,6 +61,10 @@ Menambahkan sistem session-based tracking untuk pengukuran stress dengan UUID-ba
 - `PUT /api/sensor-readings/{id}` - Update reading
 - `DELETE /api/sensor-readings/{id}` - Delete reading
 
+### Stress History
+
+- `GET /api/sessions/{id}/stress-history` - **[NEW]** Get stress history records by session
+
 ## Services Baru
 
 1. **MeasurementSessionService**
@@ -68,6 +72,8 @@ Menambahkan sistem session-based tracking untuk pengukuran stress dengan UUID-ba
 2. **SensorReadingService**
    - create(), get_all(), get_by_id(), get_by_session()
    - update(), delete()
+3. **StressHistoryService** (Updated)
+   - Added: get_by_session() - Get stress history by session_id
 
 ## Timezone
 
