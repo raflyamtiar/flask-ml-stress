@@ -1,6 +1,9 @@
 from flask import Blueprint, render_template, request, jsonify
-from .service import AppInfoService, StressHistoryService, StressModelService
-from datetime import datetime
+from .service import AppInfoService, StressHistoryService, StressModelService, MeasurementSessionService, SensorReadingService
+from datetime import datetime, timezone, timedelta
+
+# Jakarta timezone (UTC+7)
+JAKARTA_TZ = timezone(timedelta(hours=7))
 
 main = Blueprint('main', __name__)
 
@@ -207,24 +210,229 @@ def predict_stress():
 		except Exception:
 			return jsonify({'success': False, 'error': 'hr, temp and eda must be numbers'}), 400
 
+		# Step 1: Create a new measurement session
+		session_data = {
+			'notes': data.get('notes', 'Stress prediction session')
+		}
+		session = MeasurementSessionService.create(session_data)
+
+		# Step 2: Perform stress prediction
 		result = StressModelService.predict(hr, temp, eda)
 
-		# Automatically save prediction result to stress_history
+		# Step 3: Save sensor reading to the session
+		sensor_data = {
+			'session_id': session['id'],
+			'hr': hr,
+			'temp': temp,
+			'eda': eda
+		}
+		saved_sensor = SensorReadingService.create(sensor_data)
+
+		# Step 4: Save prediction result to stress_history with session reference
 		history_data = {
+			'session_id': session['id'],
 			'hr': result['hr'],
 			'temp': result['temp'],
 			'eda': result['eda'],
 			'label': result['label'],
 			'confidence_level': result['confidence_level'],
-			'notes': data.get('notes', '')  # Optional notes from request
+			'notes': data.get('notes', '')
 		}
 		saved_history = StressHistoryService.create(history_data)
 
 		return jsonify({
 			'success': True,
 			'data': result,
-			'history_id': saved_history['id']
+			'session_id': session['id'],
+			'history_id': saved_history['id'],
+			'sensor_reading_id': saved_sensor['id']
 		})
+	except Exception as e:
+		return jsonify({'success': False, 'error': str(e)}), 500
+
+
+# RESTful API endpoints for measurement_sessions CRUD
+
+@main.route('/api/sessions', methods=['GET'])
+def get_sessions():
+	"""Get all measurement sessions."""
+	try:
+		sessions = MeasurementSessionService.get_all()
+		return jsonify({'success': True, 'data': sessions})
+	except Exception as e:
+		return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@main.route('/api/sessions/<session_id>', methods=['GET'])
+def get_session(session_id):
+	"""Get a specific measurement session by ID."""
+	try:
+		session = MeasurementSessionService.get_by_id(session_id)
+		if session:
+			return jsonify({'success': True, 'data': session})
+		return jsonify({'success': False, 'error': 'Session not found'}), 404
+	except Exception as e:
+		return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@main.route('/api/sessions', methods=['POST'])
+def create_session():
+	"""Create a new measurement session."""
+	try:
+		data = request.get_json() or {}
+		session = MeasurementSessionService.create(data)
+		return jsonify({'success': True, 'data': session}), 201
+	except Exception as e:
+		return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@main.route('/api/sessions/<session_id>', methods=['DELETE'])
+def delete_session(session_id):
+	"""Delete a measurement session."""
+	try:
+		ok = MeasurementSessionService.delete(session_id)
+		if ok:
+			return jsonify({'success': True, 'message': 'Session deleted'})
+		return jsonify({'success': False, 'error': 'Session not found'}), 404
+	except Exception as e:
+		return jsonify({'success': False, 'error': str(e)}), 500
+
+
+# RESTful API endpoints for sensor_readings CRUD
+
+@main.route('/api/sensor-readings', methods=['GET'])
+def get_sensor_readings():
+	"""Get all sensor readings."""
+	try:
+		readings = SensorReadingService.get_all()
+		return jsonify({'success': True, 'data': readings})
+	except Exception as e:
+		return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@main.route('/api/sensor-readings/<int:reading_id>', methods=['GET'])
+def get_sensor_reading(reading_id):
+	"""Get a specific sensor reading by ID."""
+	try:
+		reading = SensorReadingService.get_by_id(reading_id)
+		if reading:
+			return jsonify({'success': True, 'data': reading})
+		return jsonify({'success': False, 'error': 'Reading not found'}), 404
+	except Exception as e:
+		return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@main.route('/api/sessions/<session_id>/sensor-readings', methods=['GET'])
+def get_session_sensor_readings(session_id):
+	"""Get all sensor readings for a specific session."""
+	try:
+		readings = SensorReadingService.get_by_session(session_id)
+		return jsonify({'success': True, 'data': readings})
+	except Exception as e:
+		return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@main.route('/api/sessions/<session_id>/sensor-readings/bulk', methods=['POST'])
+def create_bulk_sensor_readings(session_id):
+	"""Create multiple sensor readings for a session at once."""
+	try:
+		data = request.get_json() or {}
+		
+		# Expect 'readings' array in request body
+		if 'readings' not in data or not isinstance(data['readings'], list):
+			return jsonify({
+				'success': False, 
+				'error': 'Request body must contain "readings" array'
+			}), 400
+		
+		readings_data = data['readings']
+		
+		if len(readings_data) == 0:
+			return jsonify({
+				'success': False, 
+				'error': 'Readings array cannot be empty'
+			}), 400
+		
+		# Validate each reading has required fields
+		required_fields = ['hr', 'temp', 'eda']
+		created_readings = []
+		errors = []
+		
+		for idx, reading_data in enumerate(readings_data):
+			missing = [f for f in required_fields if f not in reading_data]
+			if missing:
+				errors.append({
+					'index': idx,
+					'error': f"Missing fields: {', '.join(missing)}"
+				})
+				continue
+			
+			try:
+				# Add session_id to each reading
+				reading_data['session_id'] = session_id
+				created = SensorReadingService.create(reading_data)
+				created_readings.append(created)
+			except Exception as e:
+				errors.append({
+					'index': idx,
+					'error': str(e)
+				})
+		
+		# Return results
+		response = {
+			'success': len(created_readings) > 0,
+			'created_count': len(created_readings),
+			'error_count': len(errors),
+			'data': created_readings
+		}
+		
+		if errors:
+			response['errors'] = errors
+		
+		status_code = 201 if len(created_readings) > 0 else 400
+		return jsonify(response), status_code
+		
+	except Exception as e:
+		return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@main.route('/api/sensor-readings', methods=['POST'])
+def create_sensor_reading():
+	"""Create a new sensor reading."""
+	try:
+		data = request.get_json() or {}
+		required = ['session_id', 'hr', 'temp', 'eda']
+		missing = [k for k in required if k not in data]
+		if missing:
+			return jsonify({'success': False, 'error': f"Missing fields: {', '.join(missing)}"}), 400
+		
+		reading = SensorReadingService.create(data)
+		return jsonify({'success': True, 'data': reading}), 201
+	except Exception as e:
+		return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@main.route('/api/sensor-readings/<int:reading_id>', methods=['PUT'])
+def update_sensor_reading(reading_id):
+	"""Update a sensor reading."""
+	try:
+		data = request.get_json() or {}
+		reading = SensorReadingService.update(reading_id, data)
+		if reading:
+			return jsonify({'success': True, 'data': reading})
+		return jsonify({'success': False, 'error': 'Reading not found'}), 404
+	except Exception as e:
+		return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@main.route('/api/sensor-readings/<int:reading_id>', methods=['DELETE'])
+def delete_sensor_reading(reading_id):
+	"""Delete a sensor reading."""
+	try:
+		ok = SensorReadingService.delete(reading_id)
+		if ok:
+			return jsonify({'success': True, 'message': 'Reading deleted'})
+		return jsonify({'success': False, 'error': 'Reading not found'}), 404
 	except Exception as e:
 		return jsonify({'success': False, 'error': str(e)}), 500
 
@@ -302,13 +510,15 @@ def esp32_http_fallback():
 		if timestamp:
 			try:
 				if isinstance(timestamp, (int, float)):
-					timestamp = datetime.fromtimestamp(timestamp)
+					# Unix timestamp - convert to Jakarta time
+					timestamp = datetime.fromtimestamp(timestamp, tz=JAKARTA_TZ)
 				elif isinstance(timestamp, str):
-					timestamp = datetime.fromisoformat(timestamp.replace('Z', '+00:00'))
+					# ISO string - parse and convert to Jakarta time
+					timestamp = datetime.fromisoformat(timestamp.replace('Z', '+00:00')).astimezone(JAKARTA_TZ)
 			except (ValueError, TypeError):
-				timestamp = datetime.now()
+				timestamp = datetime.now(JAKARTA_TZ)
 		else:
-			timestamp = datetime.now()
+			timestamp = datetime.now(JAKARTA_TZ)
 
 		device_id = data.get('device_id', 'ESP32_HTTP')
 
@@ -385,7 +595,7 @@ def system_status():
 			'statistics': {
 				'total_records': total_count,
 				'recent_24h_records': recent_count,
-				'last_updated': datetime.now().isoformat()
+				'last_updated': datetime.now(JAKARTA_TZ).isoformat()
 			},
 			'endpoints': {
 				'websocket': '/socket.io/',
