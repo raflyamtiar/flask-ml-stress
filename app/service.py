@@ -231,7 +231,7 @@ class StressModelService:
             # some models may not support predict_proba
             proba = 1.0
 
-        label_dict = {0: 'No Stress', 1: 'Medium', 2: 'High Stress'}
+        label_dict = {0: 'Normal', 1: 'Medium', 2: 'High Stress'}
         label = label_dict.get(int(pred), str(pred))
 
         return {
