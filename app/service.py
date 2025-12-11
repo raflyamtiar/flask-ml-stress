@@ -105,6 +105,12 @@ class StressHistoryService:
         return StressHistoryService._to_dict(rec) if rec else None
 
     @staticmethod
+    def get_by_session(session_id: str) -> List[Dict[str, Any]]:
+        """Get all stress history records for a specific session."""
+        histories = HistoryStress.query.filter_by(session_id=session_id).order_by(HistoryStress.timestamp.desc()).all()
+        return [StressHistoryService._to_dict(h) for h in histories]
+
+    @staticmethod
     def create(data: dict):
         # Use Jakarta time for timestamp
         ts_val = datetime.now(JAKARTA_TZ)
