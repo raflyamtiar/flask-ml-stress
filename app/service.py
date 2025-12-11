@@ -1,11 +1,12 @@
 from datetime import datetime, timezone, timedelta
 from typing import Optional, List, Dict, Any
 from . import db
-from .models import AppInfo, HistoryStress
+from .models import AppInfo, HistoryStress, MeasurementSession, SensorReading
 import os
 from pathlib import Path
 import joblib
 import pandas as pd
+import uuid
 
 # Jakarta timezone (UTC+7)
 JAKARTA_TZ = timezone(timedelta(hours=7))
@@ -110,6 +111,7 @@ class StressHistoryService:
 
         rec = HistoryStress(
             timestamp=ts_val,
+            session_id=data.get('session_id'),
             hr=data.get('hr'),
             temp=data.get('temp'),
             eda=data.get('eda'),
@@ -169,6 +171,7 @@ class StressHistoryService:
     def _to_dict(rec: HistoryStress):
         return {
             'id': rec.id,
+            'session_id': rec.session_id,
             'timestamp': rec.timestamp.isoformat() if rec.timestamp else None,
             'hr': rec.hr,
             'temp': rec.temp,
@@ -240,4 +243,131 @@ class StressModelService:
             'eda': eda,
             'label': label,
             'confidence_level': proba
+        }
+
+class MeasurementSessionService:
+    """Service class for handling measurement_sessions CRUD operations."""
+
+    @staticmethod
+    def create(data: dict = None) -> Dict[str, Any]:
+        """Create a new measurement session."""
+        session = MeasurementSession(
+            id=str(uuid.uuid4()),
+            created_at=datetime.now(JAKARTA_TZ),
+            notes=data.get('notes', '') if data else ''
+        )
+        db.session.add(session)
+        db.session.commit()
+        return MeasurementSessionService._to_dict(session)
+
+    @staticmethod
+    def get_all() -> List[Dict[str, Any]]:
+        """Get all measurement sessions."""
+        sessions = MeasurementSession.query.order_by(MeasurementSession.created_at.desc()).all()
+        return [MeasurementSessionService._to_dict(s) for s in sessions]
+
+    @staticmethod
+    def get_by_id(session_id: str) -> Optional[Dict[str, Any]]:
+        """Get a measurement session by ID."""
+        session = MeasurementSession.query.get(session_id)
+        return MeasurementSessionService._to_dict(session) if session else None
+
+    @staticmethod
+    def delete(session_id: str) -> bool:
+        """Delete a measurement session."""
+        session = MeasurementSession.query.get(session_id)
+        if not session:
+            return False
+        db.session.delete(session)
+        db.session.commit()
+        return True
+
+    @staticmethod
+    def _to_dict(session: MeasurementSession) -> Dict[str, Any]:
+        """Convert MeasurementSession model to dictionary."""
+        return {
+            'id': session.id,
+            'created_at': session.created_at.isoformat() if session.created_at else None,
+            'notes': session.notes or ''
+        }
+
+
+class SensorReadingService:
+    """Service class for handling sensor_readings CRUD operations."""
+
+    @staticmethod
+    def create(data: dict) -> Dict[str, Any]:
+        """Create a new sensor reading."""
+        reading = SensorReading(
+            session_id=data['session_id'],
+            timestamp=datetime.now(JAKARTA_TZ),
+            hr=data['hr'],
+            temp=data['temp'],
+            eda=data['eda']
+        )
+        db.session.add(reading)
+        db.session.commit()
+        return SensorReadingService._to_dict(reading)
+
+    @staticmethod
+    def get_all() -> List[Dict[str, Any]]:
+        """Get all sensor readings."""
+        readings = SensorReading.query.order_by(SensorReading.timestamp.desc()).all()
+        return [SensorReadingService._to_dict(r) for r in readings]
+
+    @staticmethod
+    def get_by_id(reading_id: int) -> Optional[Dict[str, Any]]:
+        """Get a sensor reading by ID."""
+        reading = SensorReading.query.get(reading_id)
+        return SensorReadingService._to_dict(reading) if reading else None
+
+    @staticmethod
+    def get_by_session(session_id: str) -> List[Dict[str, Any]]:
+        """Get all sensor readings for a specific session."""
+        readings = SensorReading.query.filter_by(session_id=session_id).order_by(SensorReading.timestamp.asc()).all()
+        return [SensorReadingService._to_dict(r) for r in readings]
+
+    @staticmethod
+    def update(reading_id: int, data: dict) -> Optional[Dict[str, Any]]:
+        """Update a sensor reading."""
+        reading = SensorReading.query.get(reading_id)
+        if not reading:
+            return None
+
+        if 'hr' in data:
+            reading.hr = data['hr']
+        if 'temp' in data:
+            reading.temp = data['temp']
+        if 'eda' in data:
+            reading.eda = data['eda']
+        if 'timestamp' in data:
+            try:
+                reading.timestamp = datetime.fromisoformat(data['timestamp'])
+            except Exception:
+                pass
+
+        db.session.commit()
+        return SensorReadingService._to_dict(reading)
+
+    @staticmethod
+    def delete(reading_id: int) -> bool:
+        """Delete a sensor reading."""
+        reading = SensorReading.query.get(reading_id)
+        if not reading:
+            return False
+        db.session.delete(reading)
+        db.session.commit()
+        return True
+
+    @staticmethod
+    def _to_dict(reading: SensorReading) -> Dict[str, Any]:
+        """Convert SensorReading model to dictionary."""
+        return {
+            'id': reading.id,
+            'session_id': reading.session_id,
+            'timestamp': reading.timestamp.isoformat() if reading.timestamp else None,
+            'hr': reading.hr,
+            'temp': reading.temp,
+            'eda': reading.eda,
+            'created_at': reading.created_at.isoformat() if reading.created_at else None
         }

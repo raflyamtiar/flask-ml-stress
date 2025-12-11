@@ -1,5 +1,5 @@
 from flask import Blueprint, render_template, request, jsonify
-from .service import AppInfoService, StressHistoryService, StressModelService
+from .service import AppInfoService, StressHistoryService, StressModelService, MeasurementSessionService, SensorReadingService
 from datetime import datetime, timezone, timedelta
 
 # Jakarta timezone (UTC+7)
@@ -210,24 +210,165 @@ def predict_stress():
 		except Exception:
 			return jsonify({'success': False, 'error': 'hr, temp and eda must be numbers'}), 400
 
+		# Step 1: Create a new measurement session
+		session_data = {
+			'notes': data.get('notes', 'Stress prediction session')
+		}
+		session = MeasurementSessionService.create(session_data)
+
+		# Step 2: Perform stress prediction
 		result = StressModelService.predict(hr, temp, eda)
 
-		# Automatically save prediction result to stress_history
+		# Step 3: Save sensor reading to the session
+		sensor_data = {
+			'session_id': session['id'],
+			'hr': hr,
+			'temp': temp,
+			'eda': eda
+		}
+		saved_sensor = SensorReadingService.create(sensor_data)
+
+		# Step 4: Save prediction result to stress_history with session reference
 		history_data = {
+			'session_id': session['id'],
 			'hr': result['hr'],
 			'temp': result['temp'],
 			'eda': result['eda'],
 			'label': result['label'],
 			'confidence_level': result['confidence_level'],
-			'notes': data.get('notes', '')  # Optional notes from request
+			'notes': data.get('notes', '')
 		}
 		saved_history = StressHistoryService.create(history_data)
 
 		return jsonify({
 			'success': True,
 			'data': result,
-			'history_id': saved_history['id']
+			'session_id': session['id'],
+			'history_id': saved_history['id'],
+			'sensor_reading_id': saved_sensor['id']
 		})
+	except Exception as e:
+		return jsonify({'success': False, 'error': str(e)}), 500
+
+
+# RESTful API endpoints for measurement_sessions CRUD
+
+@main.route('/api/sessions', methods=['GET'])
+def get_sessions():
+	"""Get all measurement sessions."""
+	try:
+		sessions = MeasurementSessionService.get_all()
+		return jsonify({'success': True, 'data': sessions})
+	except Exception as e:
+		return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@main.route('/api/sessions/<session_id>', methods=['GET'])
+def get_session(session_id):
+	"""Get a specific measurement session by ID."""
+	try:
+		session = MeasurementSessionService.get_by_id(session_id)
+		if session:
+			return jsonify({'success': True, 'data': session})
+		return jsonify({'success': False, 'error': 'Session not found'}), 404
+	except Exception as e:
+		return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@main.route('/api/sessions', methods=['POST'])
+def create_session():
+	"""Create a new measurement session."""
+	try:
+		data = request.get_json() or {}
+		session = MeasurementSessionService.create(data)
+		return jsonify({'success': True, 'data': session}), 201
+	except Exception as e:
+		return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@main.route('/api/sessions/<session_id>', methods=['DELETE'])
+def delete_session(session_id):
+	"""Delete a measurement session."""
+	try:
+		ok = MeasurementSessionService.delete(session_id)
+		if ok:
+			return jsonify({'success': True, 'message': 'Session deleted'})
+		return jsonify({'success': False, 'error': 'Session not found'}), 404
+	except Exception as e:
+		return jsonify({'success': False, 'error': str(e)}), 500
+
+
+# RESTful API endpoints for sensor_readings CRUD
+
+@main.route('/api/sensor-readings', methods=['GET'])
+def get_sensor_readings():
+	"""Get all sensor readings."""
+	try:
+		readings = SensorReadingService.get_all()
+		return jsonify({'success': True, 'data': readings})
+	except Exception as e:
+		return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@main.route('/api/sensor-readings/<int:reading_id>', methods=['GET'])
+def get_sensor_reading(reading_id):
+	"""Get a specific sensor reading by ID."""
+	try:
+		reading = SensorReadingService.get_by_id(reading_id)
+		if reading:
+			return jsonify({'success': True, 'data': reading})
+		return jsonify({'success': False, 'error': 'Reading not found'}), 404
+	except Exception as e:
+		return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@main.route('/api/sessions/<session_id>/sensor-readings', methods=['GET'])
+def get_session_sensor_readings(session_id):
+	"""Get all sensor readings for a specific session."""
+	try:
+		readings = SensorReadingService.get_by_session(session_id)
+		return jsonify({'success': True, 'data': readings})
+	except Exception as e:
+		return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@main.route('/api/sensor-readings', methods=['POST'])
+def create_sensor_reading():
+	"""Create a new sensor reading."""
+	try:
+		data = request.get_json() or {}
+		required = ['session_id', 'hr', 'temp', 'eda']
+		missing = [k for k in required if k not in data]
+		if missing:
+			return jsonify({'success': False, 'error': f"Missing fields: {', '.join(missing)}"}), 400
+		
+		reading = SensorReadingService.create(data)
+		return jsonify({'success': True, 'data': reading}), 201
+	except Exception as e:
+		return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@main.route('/api/sensor-readings/<int:reading_id>', methods=['PUT'])
+def update_sensor_reading(reading_id):
+	"""Update a sensor reading."""
+	try:
+		data = request.get_json() or {}
+		reading = SensorReadingService.update(reading_id, data)
+		if reading:
+			return jsonify({'success': True, 'data': reading})
+		return jsonify({'success': False, 'error': 'Reading not found'}), 404
+	except Exception as e:
+		return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@main.route('/api/sensor-readings/<int:reading_id>', methods=['DELETE'])
+def delete_sensor_reading(reading_id):
+	"""Delete a sensor reading."""
+	try:
+		ok = SensorReadingService.delete(reading_id)
+		if ok:
+			return jsonify({'success': True, 'message': 'Reading deleted'})
+		return jsonify({'success': False, 'error': 'Reading not found'}), 404
 	except Exception as e:
 		return jsonify({'success': False, 'error': str(e)}), 500
 
