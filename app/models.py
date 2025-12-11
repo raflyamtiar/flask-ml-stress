@@ -1,10 +1,13 @@
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 from typing import Optional
 import uuid
 
 from flask import current_app
 
 from . import db
+
+# Jakarta timezone (UTC+7)
+JAKARTA_TZ = timezone(timedelta(hours=7))
 
 
 class AppInfo(db.Model):
@@ -16,8 +19,8 @@ class AppInfo(db.Model):
     description = db.Column(db.Text)
     owner = db.Column(db.String(128))
     contact = db.Column(db.String(256))
-    created_at = db.Column(db.DateTime, server_default=db.func.now())
-    updated_at = db.Column(db.DateTime, server_default=db.func.now(), onupdate=db.func.now())
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(JAKARTA_TZ))
+    updated_at = db.Column(db.DateTime, default=lambda: datetime.now(JAKARTA_TZ), onupdate=lambda: datetime.now(JAKARTA_TZ))
 
 
 class MeasurementSession(db.Model):
@@ -45,7 +48,7 @@ class HistoryStress(db.Model):
     label = db.Column(db.String(128))
     confidence_level = db.Column(db.Float)
     notes = db.Column(db.Text)
-    created_at = db.Column(db.DateTime, server_default=db.func.now())
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(JAKARTA_TZ))
     
     # Relationship
     session = db.relationship('MeasurementSession', back_populates='stress_histories')
@@ -61,7 +64,7 @@ class SensorReading(db.Model):
     hr = db.Column(db.Float, nullable=False)
     temp = db.Column(db.Float, nullable=False)
     eda = db.Column(db.Float, nullable=False)
-    created_at = db.Column(db.DateTime, server_default=db.func.now())
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(JAKARTA_TZ))
     
     # Relationship
     session = db.relationship('MeasurementSession', back_populates='sensor_readings')
