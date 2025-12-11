@@ -332,6 +332,70 @@ def get_session_sensor_readings(session_id):
 		return jsonify({'success': False, 'error': str(e)}), 500
 
 
+@main.route('/api/sessions/<session_id>/sensor-readings/bulk', methods=['POST'])
+def create_bulk_sensor_readings(session_id):
+	"""Create multiple sensor readings for a session at once."""
+	try:
+		data = request.get_json() or {}
+		
+		# Expect 'readings' array in request body
+		if 'readings' not in data or not isinstance(data['readings'], list):
+			return jsonify({
+				'success': False, 
+				'error': 'Request body must contain "readings" array'
+			}), 400
+		
+		readings_data = data['readings']
+		
+		if len(readings_data) == 0:
+			return jsonify({
+				'success': False, 
+				'error': 'Readings array cannot be empty'
+			}), 400
+		
+		# Validate each reading has required fields
+		required_fields = ['hr', 'temp', 'eda']
+		created_readings = []
+		errors = []
+		
+		for idx, reading_data in enumerate(readings_data):
+			missing = [f for f in required_fields if f not in reading_data]
+			if missing:
+				errors.append({
+					'index': idx,
+					'error': f"Missing fields: {', '.join(missing)}"
+				})
+				continue
+			
+			try:
+				# Add session_id to each reading
+				reading_data['session_id'] = session_id
+				created = SensorReadingService.create(reading_data)
+				created_readings.append(created)
+			except Exception as e:
+				errors.append({
+					'index': idx,
+					'error': str(e)
+				})
+		
+		# Return results
+		response = {
+			'success': len(created_readings) > 0,
+			'created_count': len(created_readings),
+			'error_count': len(errors),
+			'data': created_readings
+		}
+		
+		if errors:
+			response['errors'] = errors
+		
+		status_code = 201 if len(created_readings) > 0 else 400
+		return jsonify(response), status_code
+		
+	except Exception as e:
+		return jsonify({'success': False, 'error': str(e)}), 500
+
+
 @main.route('/api/sensor-readings', methods=['POST'])
 def create_sensor_reading():
 	"""Create a new sensor reading."""

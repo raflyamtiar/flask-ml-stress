@@ -54,43 +54,44 @@ The script prints colored status messages (yellow = action, cyan = notice, green
 
 ### HTTP REST API Endpoints
 
-| Method                        | Endpoint                             | Description                                        | Auth Required |
-| ----------------------------- | ------------------------------------ | -------------------------------------------------- | ------------- |
+| Method                        | Endpoint                                  | Description                                        | Auth Required |
+| ----------------------------- | ----------------------------------------- | -------------------------------------------------- | ------------- |
 | **General**                   |
-| `GET`                         | `/`                                  | Serve main HTML page                               | No            |
-| `GET`                         | `/api`                               | API status check                                   | No            |
-| `GET`                         | `/api/system/status`                 | System status & statistics                         | No            |
+| `GET`                         | `/`                                       | Serve main HTML page                               | No            |
+| `GET`                         | `/api`                                    | API status check                                   | No            |
+| `GET`                         | `/api/system/status`                      | System status & statistics                         | No            |
 | **App Info CRUD**             |
-| `GET`                         | `/api/app-info`                      | Get all app info records                           | No            |
-| `GET`                         | `/api/app-info/{id}`                 | Get specific app info by ID                        | No            |
-| `POST`                        | `/api/app-info`                      | Create new app info                                | No            |
-| `PUT`                         | `/api/app-info/{id}`                 | Update app info by ID                              | No            |
-| `DELETE`                      | `/api/app-info/{id}`                 | Delete app info by ID                              | No            |
+| `GET`                         | `/api/app-info`                           | Get all app info records                           | No            |
+| `GET`                         | `/api/app-info/{id}`                      | Get specific app info by ID                        | No            |
+| `POST`                        | `/api/app-info`                           | Create new app info                                | No            |
+| `PUT`                         | `/api/app-info/{id}`                      | Update app info by ID                              | No            |
+| `DELETE`                      | `/api/app-info/{id}`                      | Delete app info by ID                              | No            |
 | **Stress History CRUD**       |
-| `GET`                         | `/api/stress-history`                | Get all stress history records                     | No            |
-| `GET`                         | `/api/stress-history/{id}`           | Get specific stress record                         | No            |
-| `POST`                        | `/api/stress-history`                | Create new stress record                           | No            |
-| `PUT`                         | `/api/stress-history/{id}`           | Update stress record                               | No            |
-| `DELETE`                      | `/api/stress-history/{id}`           | Delete stress record                               | No            |
+| `GET`                         | `/api/stress-history`                     | Get all stress history records                     | No            |
+| `GET`                         | `/api/stress-history/{id}`                | Get specific stress record                         | No            |
+| `POST`                        | `/api/stress-history`                     | Create new stress record                           | No            |
+| `PUT`                         | `/api/stress-history/{id}`                | Update stress record                               | No            |
+| `DELETE`                      | `/api/stress-history/{id}`                | Delete stress record                               | No            |
 | **Measurement Sessions CRUD** |
-| `GET`                         | `/api/sessions`                      | Get all measurement sessions                       | No            |
-| `GET`                         | `/api/sessions/{id}`                 | Get specific session by ID                         | No            |
-| `POST`                        | `/api/sessions`                      | Create new measurement session                     | No            |
-| `DELETE`                      | `/api/sessions/{id}`                 | Delete session by ID                               | No            |
+| `GET`                         | `/api/sessions`                           | Get all measurement sessions                       | No            |
+| `GET`                         | `/api/sessions/{id}`                      | Get specific session by ID                         | No            |
+| `POST`                        | `/api/sessions`                           | Create new measurement session                     | No            |
+| `DELETE`                      | `/api/sessions/{id}`                      | Delete session by ID                               | No            |
 | **Sensor Readings CRUD**      |
-| `GET`                         | `/api/sensor-readings`               | Get all sensor readings                            | No            |
-| `GET`                         | `/api/sensor-readings/{id}`          | Get specific sensor reading                        | No            |
-| `GET`                         | `/api/sessions/{id}/sensor-readings` | Get sensor readings for a session                  | No            |
-| `POST`                        | `/api/sensor-readings`               | Create new sensor reading                          | No            |
-| `PUT`                         | `/api/sensor-readings/{id}`          | Update sensor reading                              | No            |
-| `DELETE`                      | `/api/sensor-readings/{id}`          | Delete sensor reading                              | No            |
+| `GET`                         | `/api/sensor-readings`                    | Get all sensor readings                            | No            |
+| `GET`                         | `/api/sensor-readings/{id}`               | Get specific sensor reading                        | No            |
+| `GET`                         | `/api/sessions/{id}/sensor-readings`      | Get sensor readings for a session                  | No            |
+| `POST`                        | `/api/sensor-readings`                    | Create new sensor reading                          | No            |
+| `POST`                        | `/api/sessions/{id}/sensor-readings/bulk` | Create multiple readings for a session             | No            |
+| `PUT`                         | `/api/sensor-readings/{id}`               | Update sensor reading                              | No            |
+| `DELETE`                      | `/api/sensor-readings/{id}`               | Delete sensor reading                              | No            |
 | **ML Prediction**             |
-| `POST`                        | `/api/predict-stress`                | Predict stress from sensor data                    | No            |
+| `POST`                        | `/api/predict-stress`                     | Predict stress from sensor data                    | No            |
 | **ESP32 HTTP Fallback**       |
-| `POST`                        | `/api/esp32/data`                    | HTTP fallback for ESP32 (if WebSocket unavailable) | No            |
+| `POST`                        | `/api/esp32/data`                         | HTTP fallback for ESP32 (if WebSocket unavailable) | No            |
 | **WebSocket Info**            |
-| `GET`                         | `/api/websocket/info`                | Get WebSocket connection info & events             | No            |
-| `GET`                         | `/api/websocket/test`                | WebSocket test HTML page                           | No            |
+| `GET`                         | `/api/websocket/info`                     | Get WebSocket connection info & events             | No            |
+| `GET`                         | `/api/websocket/test`                     | WebSocket test HTML page                           | No            |
 
 ### WebSocket Events (Real-time Relay)
 
@@ -577,6 +578,76 @@ Content-Type: application/json
 DELETE /api/sensor-readings/{reading_id}
 ```
 
+#### Bulk create sensor readings
+
+Create multiple sensor readings for a session in one request.
+
+```http
+POST /api/sessions/{session_id}/sensor-readings/bulk
+Content-Type: application/json
+
+{
+  "readings": [
+    {"hr": 75.5, "temp": 36.6, "eda": 0.45},
+    {"hr": 76.0, "temp": 36.7, "eda": 0.48},
+    {"hr": 74.8, "temp": 36.5, "eda": 0.42}
+  ]
+}
+```
+
+**Request format:**
+
+- `readings` (required): Array of sensor reading objects
+- Each reading must have: `hr`, `temp`, `eda` (all required)
+- `session_id` is taken from URL path
+- Each reading gets its own auto-generated `timestamp`
+
+**Response:**
+
+```json
+{
+  "success": true,
+  "created_count": 3,
+  "error_count": 0,
+  "data": [
+    {
+      "id": 1,
+      "session_id": "a1b2c3d4-...",
+      "timestamp": "2025-12-11T14:30:00+07:00",
+      "hr": 75.5,
+      "temp": 36.6,
+      "eda": 0.45,
+      "created_at": "2025-12-11T14:30:01+07:00"
+    },
+    {
+      "id": 2,
+      "session_id": "a1b2c3d4-...",
+      "timestamp": "2025-12-11T14:30:02+07:00",
+      "hr": 76.0,
+      "temp": 36.7,
+      "eda": 0.48,
+      "created_at": "2025-12-11T14:30:03+07:00"
+    },
+    {
+      "id": 3,
+      "session_id": "a1b2c3d4-...",
+      "timestamp": "2025-12-11T14:30:04+07:00",
+      "hr": 74.8,
+      "temp": 36.5,
+      "eda": 0.42,
+      "created_at": "2025-12-11T14:30:05+07:00"
+    }
+  ]
+}
+```
+
+**Notes:**
+
+- If some readings have errors, valid ones will still be saved
+- Response includes `created_count` and `error_count`
+- Any errors are listed in `errors` array with index and error message
+- All timestamps use Jakarta timezone (UTC+7)
+
 ### Curl Examples for New Endpoints
 
 ```powershell
@@ -588,6 +659,9 @@ curl http://127.0.0.1:5000/api/sessions
 
 # Create sensor reading
 curl -X POST http://127.0.0.1:5000/api/sensor-readings -H "Content-Type: application/json" -d '{"session_id":"YOUR-UUID-HERE","hr":75.5,"temp":36.6,"eda":0.45}'
+
+# Bulk create sensor readings
+curl -X POST http://127.0.0.1:5000/api/sessions/YOUR-UUID-HERE/sensor-readings/bulk -H "Content-Type: application/json" -d '{"readings":[{"hr":75.5,"temp":36.6,"eda":0.45},{"hr":76.0,"temp":36.7,"eda":0.48}]}'
 
 # Get sensor readings for a session
 curl http://127.0.0.1:5000/api/sessions/YOUR-UUID-HERE/sensor-readings

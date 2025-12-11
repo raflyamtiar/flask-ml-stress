@@ -57,6 +57,7 @@ Menambahkan sistem session-based tracking untuk pengukuran stress dengan UUID-ba
 - `GET /api/sensor-readings/{id}` - Get specific reading
 - `GET /api/sessions/{id}/sensor-readings` - Get readings by session
 - `POST /api/sensor-readings` - Create new reading
+- `POST /api/sessions/{id}/sensor-readings/bulk` - **[NEW]** Create multiple readings for a session
 - `PUT /api/sensor-readings/{id}` - Update reading
 - `DELETE /api/sensor-readings/{id}` - Delete reading
 
@@ -117,6 +118,69 @@ Expected response:
   "sensor_reading_id": 1
 }
 ```
+
+### Test Bulk Insert Sensor Readings
+
+Kirim banyak sensor readings sekaligus untuk satu session:
+
+```powershell
+curl -X POST http://127.0.0.1:5000/api/sessions/YOUR-SESSION-UUID/sensor-readings/bulk `
+  -H "Content-Type: application/json" `
+  -d '{
+    "readings": [
+      {"hr":75.5,"temp":36.6,"eda":0.45},
+      {"hr":76.0,"temp":36.7,"eda":0.48},
+      {"hr":74.8,"temp":36.5,"eda":0.42}
+    ]
+  }'
+```
+
+Expected response:
+
+```json
+{
+  "success": true,
+  "created_count": 3,
+  "error_count": 0,
+  "data": [
+    {
+      "id": 1,
+      "session_id": "a1b2c3d4-...",
+      "timestamp": "2025-12-11T14:30:00+07:00",
+      "hr": 75.5,
+      "temp": 36.6,
+      "eda": 0.45,
+      "created_at": "2025-12-11T14:30:01+07:00"
+    },
+    {
+      "id": 2,
+      "session_id": "a1b2c3d4-...",
+      "timestamp": "2025-12-11T14:30:02+07:00",
+      "hr": 76.0,
+      "temp": 36.7,
+      "eda": 0.48,
+      "created_at": "2025-12-11T14:30:03+07:00"
+    },
+    {
+      "id": 3,
+      "session_id": "a1b2c3d4-...",
+      "timestamp": "2025-12-11T14:30:04+07:00",
+      "hr": 74.8,
+      "temp": 36.5,
+      "eda": 0.42,
+      "created_at": "2025-12-11T14:30:05+07:00"
+    }
+  ]
+}
+```
+
+**Catatan Bulk Insert:**
+
+- Semua readings akan menggunakan `session_id` yang sama (dari URL)
+- Setiap reading harus memiliki `hr`, `temp`, dan `eda`
+- `timestamp` otomatis di-generate untuk setiap reading
+- Jika ada error di beberapa readings, yang valid tetap akan tersimpan
+- Response include `created_count` dan `error_count`
 
 ## Files Modified
 
