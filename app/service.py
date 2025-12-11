@@ -131,7 +131,13 @@ class StressHistoryService:
 
         if 'timestamp' in data:
             try:
-                rec.timestamp = datetime.fromisoformat(data['timestamp'])
+                # Parse timestamp and convert to Jakarta timezone
+                parsed_ts = datetime.fromisoformat(data['timestamp'])
+                # If timezone-aware, convert to Jakarta; if naive, assume Jakarta
+                if parsed_ts.tzinfo is not None:
+                    rec.timestamp = parsed_ts.astimezone(JAKARTA_TZ)
+                else:
+                    rec.timestamp = parsed_ts.replace(tzinfo=JAKARTA_TZ)
             except Exception:
                 pass
         if 'hr' in data:
@@ -342,7 +348,13 @@ class SensorReadingService:
             reading.eda = data['eda']
         if 'timestamp' in data:
             try:
-                reading.timestamp = datetime.fromisoformat(data['timestamp'])
+                # Parse timestamp and convert to Jakarta timezone
+                parsed_ts = datetime.fromisoformat(data['timestamp'])
+                # If timezone-aware, convert to Jakarta; if naive, assume Jakarta
+                if parsed_ts.tzinfo is not None:
+                    reading.timestamp = parsed_ts.astimezone(JAKARTA_TZ)
+                else:
+                    reading.timestamp = parsed_ts.replace(tzinfo=JAKARTA_TZ)
             except Exception:
                 pass
 
