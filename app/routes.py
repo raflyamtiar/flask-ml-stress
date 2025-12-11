@@ -1,6 +1,9 @@
 from flask import Blueprint, render_template, request, jsonify
 from .service import AppInfoService, StressHistoryService, StressModelService
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
+
+# Jakarta timezone (UTC+7)
+JAKARTA_TZ = timezone(timedelta(hours=7))
 
 main = Blueprint('main', __name__)
 
@@ -302,13 +305,15 @@ def esp32_http_fallback():
 		if timestamp:
 			try:
 				if isinstance(timestamp, (int, float)):
-					timestamp = datetime.fromtimestamp(timestamp)
+					# Unix timestamp - convert to Jakarta time
+					timestamp = datetime.fromtimestamp(timestamp, tz=JAKARTA_TZ)
 				elif isinstance(timestamp, str):
-					timestamp = datetime.fromisoformat(timestamp.replace('Z', '+00:00'))
+					# ISO string - parse and convert to Jakarta time
+					timestamp = datetime.fromisoformat(timestamp.replace('Z', '+00:00')).astimezone(JAKARTA_TZ)
 			except (ValueError, TypeError):
-				timestamp = datetime.now()
+				timestamp = datetime.now(JAKARTA_TZ)
 		else:
-			timestamp = datetime.now()
+			timestamp = datetime.now(JAKARTA_TZ)
 
 		device_id = data.get('device_id', 'ESP32_HTTP')
 
@@ -385,7 +390,7 @@ def system_status():
 			'statistics': {
 				'total_records': total_count,
 				'recent_24h_records': recent_count,
-				'last_updated': datetime.now().isoformat()
+				'last_updated': datetime.now(JAKARTA_TZ).isoformat()
 			},
 			'endpoints': {
 				'websocket': '/socket.io/',

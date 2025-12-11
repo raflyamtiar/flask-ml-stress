@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 from typing import Optional, List, Dict, Any
 from . import db
 from .models import AppInfo, HistoryStress
@@ -6,6 +6,9 @@ import os
 from pathlib import Path
 import joblib
 import pandas as pd
+
+# Jakarta timezone (UTC+7)
+JAKARTA_TZ = timezone(timedelta(hours=7))
 
 
 class AppInfoService:
@@ -56,7 +59,8 @@ class AppInfoService:
         if 'contact' in data:
             app_info.contact = data['contact']
         
-        app_info.updated_at = datetime.utcnow()
+        # Use Jakarta time
+        app_info.updated_at = datetime.now(JAKARTA_TZ)
         db.session.commit()
         return AppInfoService._to_dict(app_info)
 
@@ -101,8 +105,8 @@ class StressHistoryService:
 
     @staticmethod
     def create(data: dict):
-        # For create: timestamp is set server-side to UTC now.
-        ts_val = datetime.utcnow()
+        # Use Jakarta time for timestamp
+        ts_val = datetime.now(JAKARTA_TZ)
 
         rec = HistoryStress(
             timestamp=ts_val,
@@ -157,7 +161,7 @@ class StressHistoryService:
     def get_recent_count(hours: int = 24) -> int:
         """Get count of records from the last N hours."""
         from datetime import timedelta
-        cutoff_time = datetime.utcnow() - timedelta(hours=hours)
+        cutoff_time = datetime.now(JAKARTA_TZ) - timedelta(hours=hours)
         count = HistoryStress.query.filter(HistoryStress.timestamp >= cutoff_time).count()
         return count
 

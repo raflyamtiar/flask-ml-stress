@@ -8,7 +8,7 @@ This module handles:
 
 from flask import request
 from flask_socketio import emit, join_room, leave_room, disconnect
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 import logging
 
 from . import socketio
@@ -16,6 +16,9 @@ from . import socketio
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+# Jakarta timezone (UTC+7)
+JAKARTA_TZ = timezone(timedelta(hours=7))
 
 # Store connected clients info
 connected_clients = {}
@@ -29,8 +32,8 @@ def handle_connect(auth=None):
     
     connected_clients[client_id] = {
         'type': client_type,
-        'connected_at': datetime.now(),
-        'last_seen': datetime.now()
+        'connected_at': datetime.now(JAKARTA_TZ),
+        'last_seen': datetime.now(JAKARTA_TZ)
     }
     
     logger.info(f"Client connected: {client_id} (type: {client_type})")
@@ -99,7 +102,7 @@ def handle_esp32_live_data(data):
             return
 
         # Update last seen
-        connected_clients[client_id]['last_seen'] = datetime.now()
+        connected_clients[client_id]['last_seen'] = datetime.now(JAKARTA_TZ)
 
         # Validate required fields
         required_fields = ['hr', 'temp', 'eda']
@@ -112,13 +115,15 @@ def handle_esp32_live_data(data):
         if timestamp:
             try:
                 if isinstance(timestamp, (int, float)):
-                    timestamp = datetime.fromtimestamp(timestamp)
+                    # Unix timestamp - convert to Jakarta time
+                    timestamp = datetime.fromtimestamp(timestamp, tz=JAKARTA_TZ)
                 elif isinstance(timestamp, str):
-                    timestamp = datetime.fromisoformat(timestamp.replace('Z', '+00:00'))
+                    # ISO string - parse and convert to Jakarta time
+                    timestamp = datetime.fromisoformat(timestamp.replace('Z', '+00:00')).astimezone(JAKARTA_TZ)
             except (ValueError, TypeError):
-                timestamp = datetime.now()
+                timestamp = datetime.now(JAKARTA_TZ)
         else:
-            timestamp = datetime.now()
+            timestamp = datetime.now(JAKARTA_TZ)
 
         # Extract sensor values
         hr = float(data['hr'])
@@ -156,9 +161,9 @@ def handle_ping():
     """Handle ping from clients for connection testing."""
     client_id = request.sid
     if client_id in connected_clients:
-        connected_clients[client_id]['last_seen'] = datetime.now()
+        connected_clients[client_id]['last_seen'] = datetime.now(JAKARTA_TZ)
     
-    emit('pong', {'timestamp': datetime.now().isoformat()})
+    emit('pong', {'timestamp': datetime.now(JAKARTA_TZ).isoformat()})
 
 
 # Health check endpoint for WebSocket
@@ -167,7 +172,7 @@ def handle_health_check():
     """Handle health check requests."""
     emit('health_status', {
         'status': 'healthy',
-        'timestamp': datetime.now().isoformat(),
+        'timestamp': datetime.now(JAKARTA_TZ).isoformat(),
         'connected_clients': len(connected_clients),
         'server_info': 'Flask-SocketIO Real-time Relay Server'
     })

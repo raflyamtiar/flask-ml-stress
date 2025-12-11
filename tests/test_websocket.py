@@ -6,7 +6,10 @@ Test real-time sensor data sending via Socket.IO
 import socketio
 import time
 import random
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
+
+# Jakarta timezone (UTC+7)
+JAKARTA_TZ = timezone(timedelta(hours=7))
 
 # Create Socket.IO client
 sio = socketio.Client()
@@ -66,7 +69,7 @@ def generate_sensor_data(stress_level='normal'):
         'temp': round(temp, 1),
         'eda': round(eda, 2),
         'device_id': 'ESP32_PYTHON_TEST',
-        'timestamp': datetime.now().isoformat()
+        'timestamp': datetime.now(JAKARTA_TZ).isoformat()
     }
 
 
