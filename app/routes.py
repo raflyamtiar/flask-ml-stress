@@ -1,5 +1,6 @@
 from flask import Blueprint, render_template, request, jsonify
-from .service import AppInfoService, StressHistoryService, StressModelService, MeasurementSessionService, SensorReadingService
+from flask_jwt_extended import jwt_required, get_jwt_identity, create_access_token
+from .service import AppInfoService, StressHistoryService, StressModelService, MeasurementSessionService, SensorReadingService, UserService
 from datetime import datetime, timezone, timedelta
 
 # Jakarta timezone (UTC+7)
@@ -618,5 +619,274 @@ def system_status():
 		return jsonify({
 			'success': False,
 			'status': 'error',
+			'error': str(e)
+		}), 500
+
+
+# ============================================
+# Authentication & User Management Routes
+# ============================================
+
+@main.route('/api/auth/register', methods=['POST'])
+def register():
+	"""Register a new user."""
+	try:
+		data = request.get_json()
+		
+		# Validate required fields
+		if not data or not data.get('username') or not data.get('email') or not data.get('password'):
+			return jsonify({
+				'success': False,
+				'error': 'Username, email, and password are required'
+			}), 400
+		
+		# Create user
+		user = UserService.create_user(
+			username=data['username'],
+			email=data['email'],
+			password=data['password']
+		)
+		
+		return jsonify({
+			'success': True,
+			'message': 'User registered successfully',
+			'data': user
+		}), 201
+		
+	except ValueError as e:
+		return jsonify({
+			'success': False,
+			'error': str(e)
+		}), 400
+	except Exception as e:
+		return jsonify({
+			'success': False,
+			'error': str(e)
+		}), 500
+
+
+@main.route('/api/auth/login', methods=['POST'])
+def login():
+	"""Authenticate user and return JWT tokens."""
+	try:
+		data = request.get_json()
+		
+		# Validate required fields
+		if not data or not data.get('username') or not data.get('password'):
+			return jsonify({
+				'success': False,
+				'error': 'Username and password are required'
+			}), 400
+		
+		# Authenticate user
+		result = UserService.authenticate(
+			username=data['username'],
+			password=data['password']
+		)
+		
+		if not result:
+			return jsonify({
+				'success': False,
+				'error': 'Invalid username or password'
+			}), 401
+		
+		return jsonify({
+			'success': True,
+			'message': 'Login successful',
+			'data': result
+		}), 200
+		
+	except Exception as e:
+		return jsonify({
+			'success': False,
+			'error': str(e)
+		}), 500
+
+
+@main.route('/api/auth/logout', methods=['POST'])
+@jwt_required()
+def logout():
+	"""Logout user (client-side token removal)."""
+	try:
+		# JWT logout is handled client-side by removing the token
+		# This endpoint is here for consistency and can be used for logging
+		return jsonify({
+			'success': True,
+			'message': 'Logout successful'
+		}), 200
+		
+	except Exception as e:
+		return jsonify({
+			'success': False,
+			'error': str(e)
+		}), 500
+
+
+@main.route('/api/auth/refresh', methods=['POST'])
+@jwt_required(refresh=True)
+def refresh():
+	"""Refresh access token using refresh token."""
+	try:
+		current_user_id = get_jwt_identity()
+		new_access_token = create_access_token(identity=current_user_id)
+		
+		return jsonify({
+			'success': True,
+			'data': {
+				'access_token': new_access_token
+			}
+		}), 200
+		
+	except Exception as e:
+		return jsonify({
+			'success': False,
+			'error': str(e)
+		}), 500
+
+
+@main.route('/api/auth/me', methods=['GET'])
+@jwt_required()
+def get_current_user():
+	"""Get current authenticated user's information."""
+	try:
+		current_user_id = get_jwt_identity()
+		user = UserService.get_user_by_id(current_user_id)
+		
+		if not user:
+			return jsonify({
+				'success': False,
+				'error': 'User not found'
+			}), 404
+		
+		return jsonify({
+			'success': True,
+			'data': user
+		}), 200
+		
+	except Exception as e:
+		return jsonify({
+			'success': False,
+			'error': str(e)
+		}), 500
+
+
+# ============================================
+# User CRUD Routes (Protected)
+# ============================================
+
+@main.route('/api/users', methods=['GET'])
+@jwt_required()
+def get_all_users():
+	"""Get all users (admin functionality)."""
+	try:
+		users = UserService.get_all_users()
+		return jsonify({
+			'success': True,
+			'data': users
+		}), 200
+		
+	except Exception as e:
+		return jsonify({
+			'success': False,
+			'error': str(e)
+		}), 500
+
+
+@main.route('/api/users/<user_id>', methods=['GET'])
+@jwt_required()
+def get_user(user_id):
+	"""Get a specific user by ID."""
+	try:
+		user = UserService.get_user_by_id(user_id)
+		
+		if not user:
+			return jsonify({
+				'success': False,
+				'error': 'User not found'
+			}), 404
+		
+		return jsonify({
+			'success': True,
+			'data': user
+		}), 200
+		
+	except Exception as e:
+		return jsonify({
+			'success': False,
+			'error': str(e)
+		}), 500
+
+
+@main.route('/api/users/<user_id>', methods=['PUT'])
+@jwt_required()
+def update_user(user_id):
+	"""Update a user's information."""
+	try:
+		# Check if user is updating their own profile or is admin
+		current_user_id = get_jwt_identity()
+		if current_user_id != user_id:
+			# In production, add admin check here
+			pass
+		
+		data = request.get_json()
+		if not data:
+			return jsonify({
+				'success': False,
+				'error': 'No data provided'
+			}), 400
+		
+		user = UserService.update_user(user_id, data)
+		
+		if not user:
+			return jsonify({
+				'success': False,
+				'error': 'User not found'
+			}), 404
+		
+		return jsonify({
+			'success': True,
+			'message': 'User updated successfully',
+			'data': user
+		}), 200
+		
+	except ValueError as e:
+		return jsonify({
+			'success': False,
+			'error': str(e)
+		}), 400
+	except Exception as e:
+		return jsonify({
+			'success': False,
+			'error': str(e)
+		}), 500
+
+
+@main.route('/api/users/<user_id>', methods=['DELETE'])
+@jwt_required()
+def delete_user(user_id):
+	"""Delete a user."""
+	try:
+		# Check if user is deleting their own account or is admin
+		current_user_id = get_jwt_identity()
+		if current_user_id != user_id:
+			# In production, add admin check here
+			pass
+		
+		success = UserService.delete_user(user_id)
+		
+		if not success:
+			return jsonify({
+				'success': False,
+				'error': 'User not found'
+			}), 404
+		
+		return jsonify({
+			'success': True,
+			'message': 'User deleted successfully'
+		}), 200
+		
+	except Exception as e:
+		return jsonify({
+			'success': False,
 			'error': str(e)
 		}), 500

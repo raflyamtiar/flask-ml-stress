@@ -1,7 +1,8 @@
 from datetime import datetime, timezone, timedelta
 from typing import Optional, List, Dict, Any
+from flask_jwt_extended import create_access_token, create_refresh_token
 from . import db
-from .models import AppInfo, HistoryStress, MeasurementSession, SensorReading
+from .models import AppInfo, HistoryStress, MeasurementSession, SensorReading, User
 import os
 from pathlib import Path
 import joblib
@@ -389,3 +390,111 @@ class SensorReadingService:
             'eda': reading.eda,
             'created_at': reading.created_at.isoformat() if reading.created_at else None
         }
+
+
+class UserService:
+    """Service class for handling user authentication and CRUD operations."""
+
+    @staticmethod
+    def create_user(username: str, email: str, password: str) -> Dict[str, Any]:
+        """Create a new user with hashed password."""
+        # Check if username already exists
+        if User.query.filter_by(username=username).first():
+            raise ValueError("Username already exists")
+        
+        # Check if email already exists
+        if User.query.filter_by(email=email).first():
+            raise ValueError("Email already exists")
+        
+        # Create new user
+        user = User(
+            username=username,
+            email=email
+        )
+        user.set_password(password)
+        
+        db.session.add(user)
+        db.session.commit()
+        
+        return user.to_dict()
+
+    @staticmethod
+    def authenticate(username: str, password: str) -> Optional[Dict[str, Any]]:
+        """Authenticate user and return user data with tokens if successful."""
+        user = User.query.filter_by(username=username).first()
+        
+        if not user or not user.check_password(password):
+            return None
+        
+        # Create JWT tokens
+        access_token = create_access_token(identity=user.id)
+        refresh_token = create_refresh_token(identity=user.id)
+        
+        return {
+            'user': user.to_dict(),
+            'access_token': access_token,
+            'refresh_token': refresh_token
+        }
+
+    @staticmethod
+    def get_user_by_id(user_id: str) -> Optional[Dict[str, Any]]:
+        """Get user by ID."""
+        user = User.query.get(user_id)
+        return user.to_dict() if user else None
+
+    @staticmethod
+    def get_user_by_username(username: str) -> Optional[Dict[str, Any]]:
+        """Get user by username."""
+        user = User.query.filter_by(username=username).first()
+        return user.to_dict() if user else None
+
+    @staticmethod
+    def get_user_by_email(email: str) -> Optional[Dict[str, Any]]:
+        """Get user by email."""
+        user = User.query.filter_by(email=email).first()
+        return user.to_dict() if user else None
+
+    @staticmethod
+    def get_all_users() -> List[Dict[str, Any]]:
+        """Get all users."""
+        users = User.query.all()
+        return [user.to_dict() for user in users]
+
+    @staticmethod
+    def update_user(user_id: str, data: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+        """Update user information."""
+        user = User.query.get(user_id)
+        if not user:
+            return None
+        
+        # Update username if provided and not duplicate
+        if 'username' in data and data['username'] != user.username:
+            if User.query.filter_by(username=data['username']).first():
+                raise ValueError("Username already exists")
+            user.username = data['username']
+        
+        # Update email if provided and not duplicate
+        if 'email' in data and data['email'] != user.email:
+            if User.query.filter_by(email=data['email']).first():
+                raise ValueError("Email already exists")
+            user.email = data['email']
+        
+        # Update password if provided
+        if 'password' in data:
+            user.set_password(data['password'])
+        
+        user.updated_at = datetime.now(JAKARTA_TZ)
+        db.session.commit()
+        
+        return user.to_dict()
+
+    @staticmethod
+    def delete_user(user_id: str) -> bool:
+        """Delete a user."""
+        user = User.query.get(user_id)
+        if not user:
+            return False
+        
+        db.session.delete(user)
+        db.session.commit()
+        return True

@@ -5,6 +5,8 @@ import os
 from flask_sqlalchemy import SQLAlchemy
 from flask_socketio import SocketIO
 from flask_cors import CORS
+from flask_jwt_extended import JWTManager
+from flask_bcrypt import Bcrypt
 
 
 # Initialize extensions here so they can be imported from other modules
@@ -14,6 +16,8 @@ from flask_migrate import Migrate
 # Migrate extension (initialized in create_app)
 migrate = Migrate()
 socketio = SocketIO()
+jwt = JWTManager()
+bcrypt = Bcrypt()
 
 
 def create_app(config_object=None):
@@ -41,9 +45,16 @@ def create_app(config_object=None):
 		app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(app.instance_path, 'database.sqlite')
 	app.config.setdefault('SQLALCHEMY_TRACK_MODIFICATIONS', False)
 
+	# JWT Configuration
+	app.config.setdefault('JWT_SECRET_KEY', os.environ.get('JWT_SECRET_KEY', app.config['SECRET_KEY']))
+	app.config.setdefault('JWT_ACCESS_TOKEN_EXPIRES', 3600)  # 1 hour
+	app.config.setdefault('JWT_REFRESH_TOKEN_EXPIRES', 2592000)  # 30 days
+
 	# Initialize extensions
 	db.init_app(app)
 	migrate.init_app(app, db)
+	jwt.init_app(app)
+	bcrypt.init_app(app)
 	
 	# Initialize CORS for cross-origin requests (React frontend)
 	CORS(app, origins="*")
