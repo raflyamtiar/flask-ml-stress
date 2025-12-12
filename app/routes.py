@@ -174,7 +174,9 @@ def create_stress_history():
 
 
 @main.route('/api/stress-history/<int:rec_id>', methods=['PUT'])
+@jwt_required()
 def update_stress_history(rec_id):
+	"""Update stress history record. Requires authentication."""
 	try:
 		data = request.get_json() or {}
 		item = StressHistoryService.update(rec_id, data)
@@ -186,7 +188,9 @@ def update_stress_history(rec_id):
 
 
 @main.route('/api/stress-history/<int:rec_id>', methods=['DELETE'])
+@jwt_required()
 def delete_stress_history(rec_id):
+	"""Delete stress history record. Requires authentication. WARNING: Cascades to session."""
 	try:
 		ok = StressHistoryService.delete(rec_id)
 		if ok:

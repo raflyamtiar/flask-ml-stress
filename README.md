@@ -77,8 +77,8 @@ The script prints colored status messages (yellow = action, cyan = notice, green
 | `GET`                         | `/api/stress-history/{id}`                | Get specific stress record                         | No            |
 | `GET`                         | `/api/sessions/{id}/stress-history`       | Get stress history records for a session           | No            |
 | `POST`                        | `/api/stress-history`                     | Create new stress record                           | No            |
-| `PUT`                         | `/api/stress-history/{id}`                | Update stress record                               | No            |
-| `DELETE`                      | `/api/stress-history/{id}`                | Delete stress record (⚠️ cascades to session)      | No            |
+| `PUT`                         | `/api/stress-history/{id}`                | Update stress record                               | **Yes** 🔐    |
+| `DELETE`                      | `/api/stress-history/{id}`                | Delete stress record (⚠️ cascades to session)      | **Yes** 🔐    |
 | **Measurement Sessions CRUD** |
 | `GET`                         | `/api/sessions`                           | Get all measurement sessions                       | No            |
 | `GET`                         | `/api/sessions/{id}`                      | Get specific session by ID                         | No            |

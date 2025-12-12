@@ -901,7 +901,13 @@ Authorization: Bearer <access_token>
 
 **Endpoint:** `PUT /api/stress-history/{id}`
 
-**Auth Required:** No
+**Auth Required:** Yes 🔐
+
+**Headers:**
+
+```
+Authorization: Bearer <access_token>
+```
 
 **Request Body:**
 
@@ -943,7 +949,13 @@ Authorization: Bearer <access_token>
 
 **Endpoint:** `DELETE /api/stress-history/{id}`
 
-**Auth Required:** No
+**Auth Required:** Yes 🔐
+
+**Headers:**
+
+```
+Authorization: Bearer <access_token>
+```
 
 **⚠️ CRITICAL CASCADE DELETE:** Deleting a stress history record will **automatically delete its entire measurement session**, including:
 
