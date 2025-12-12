@@ -29,6 +29,7 @@ Dokumentasi lengkap API contract untuk Flask ML Stress Detection System.
 **Auth Required:** No
 
 **Request Body:**
+
 ```json
 {
   "username": "string (required, unique)",
@@ -38,6 +39,7 @@ Dokumentasi lengkap API contract untuk Flask ML Stress Detection System.
 ```
 
 **Success Response (201):**
+
 ```json
 {
   "success": true,
@@ -52,6 +54,7 @@ Dokumentasi lengkap API contract untuk Flask ML Stress Detection System.
 ```
 
 **Error Response (400):**
+
 ```json
 {
   "success": false,
@@ -68,6 +71,7 @@ Dokumentasi lengkap API contract untuk Flask ML Stress Detection System.
 **Auth Required:** No
 
 **Request Body:**
+
 ```json
 {
   "username": "string (required)",
@@ -76,6 +80,7 @@ Dokumentasi lengkap API contract untuk Flask ML Stress Detection System.
 ```
 
 **Success Response (200):**
+
 ```json
 {
   "success": true,
@@ -90,6 +95,7 @@ Dokumentasi lengkap API contract untuk Flask ML Stress Detection System.
 ```
 
 **Error Response (401):**
+
 ```json
 {
   "success": false,
@@ -106,11 +112,13 @@ Dokumentasi lengkap API contract untuk Flask ML Stress Detection System.
 **Auth Required:** Yes (Refresh Token)
 
 **Headers:**
+
 ```
 Authorization: Bearer <refresh_token>
 ```
 
 **Success Response (200):**
+
 ```json
 {
   "success": true,
@@ -127,11 +135,13 @@ Authorization: Bearer <refresh_token>
 **Auth Required:** Yes
 
 **Headers:**
+
 ```
 Authorization: Bearer <access_token>
 ```
 
 **Success Response (200):**
+
 ```json
 {
   "success": true,
@@ -154,11 +164,13 @@ Authorization: Bearer <access_token>
 **Auth Required:** Yes
 
 **Headers:**
+
 ```
 Authorization: Bearer <access_token>
 ```
 
 **Success Response (200):**
+
 ```json
 {
   "success": true,
@@ -182,11 +194,13 @@ Authorization: Bearer <access_token>
 **Auth Required:** Yes
 
 **Headers:**
+
 ```
 Authorization: Bearer <access_token>
 ```
 
 **Request Body:**
+
 ```json
 {
   "username": "string (optional)",
@@ -196,6 +210,7 @@ Authorization: Bearer <access_token>
 ```
 
 **Success Response (200):**
+
 ```json
 {
   "success": true,
@@ -217,11 +232,13 @@ Authorization: Bearer <access_token>
 **Auth Required:** Yes
 
 **Headers:**
+
 ```
 Authorization: Bearer <access_token>
 ```
 
 **Success Response (200):**
+
 ```json
 {
   "success": true,
@@ -240,6 +257,7 @@ Authorization: Bearer <access_token>
 **Auth Required:** No
 
 **Success Response (200):**
+
 ```json
 {
   "success": true,
@@ -267,6 +285,7 @@ Authorization: Bearer <access_token>
 **Auth Required:** No
 
 **Success Response (200):**
+
 ```json
 {
   "success": true,
@@ -284,6 +303,7 @@ Authorization: Bearer <access_token>
 ```
 
 **Error Response (404):**
+
 ```json
 {
   "success": false,
@@ -300,6 +320,7 @@ Authorization: Bearer <access_token>
 **Auth Required:** No
 
 **Request Body:**
+
 ```json
 {
   "app_name": "string (required)",
@@ -311,6 +332,7 @@ Authorization: Bearer <access_token>
 ```
 
 **Success Response (201):**
+
 ```json
 {
   "success": true,
@@ -336,11 +358,13 @@ Authorization: Bearer <access_token>
 **Auth Required:** Yes 🔐
 
 **Headers:**
+
 ```
 Authorization: Bearer <access_token>
 ```
 
 **Request Body:**
+
 ```json
 {
   "app_name": "string (optional)",
@@ -352,6 +376,7 @@ Authorization: Bearer <access_token>
 ```
 
 **Success Response (200):**
+
 ```json
 {
   "success": true,
@@ -373,11 +398,13 @@ Authorization: Bearer <access_token>
 **Auth Required:** Yes 🔐
 
 **Headers:**
+
 ```
 Authorization: Bearer <access_token>
 ```
 
 **Success Response (200):**
+
 ```json
 {
   "success": true,
@@ -396,6 +423,7 @@ Authorization: Bearer <access_token>
 **Auth Required:** No
 
 **Success Response (200):**
+
 ```json
 {
   "success": true,
@@ -418,6 +446,7 @@ Authorization: Bearer <access_token>
 **Auth Required:** No
 
 **Success Response (200):**
+
 ```json
 {
   "success": true,
@@ -430,6 +459,7 @@ Authorization: Bearer <access_token>
 ```
 
 **Error Response (404):**
+
 ```json
 {
   "success": false,
@@ -446,6 +476,7 @@ Authorization: Bearer <access_token>
 **Auth Required:** No
 
 **Request Body:**
+
 ```json
 {
   "notes": "string (optional)"
@@ -453,6 +484,7 @@ Authorization: Bearer <access_token>
 ```
 
 **Success Response (201):**
+
 ```json
 {
   "success": true,
@@ -473,6 +505,7 @@ Authorization: Bearer <access_token>
 **Auth Required:** Yes 🔐
 
 **Headers:**
+
 ```
 Authorization: Bearer <access_token>
 ```
@@ -480,6 +513,7 @@ Authorization: Bearer <access_token>
 **⚠️ CASCADE DELETE:** This will delete all related `sensor_readings` and `stress_history` records.
 
 **Success Response (200):**
+
 ```json
 {
   "success": true,
@@ -496,6 +530,7 @@ Authorization: Bearer <access_token>
 **Auth Required:** No
 
 **Success Response (200):**
+
 ```json
 {
   "success": true,
@@ -525,6 +560,7 @@ Authorization: Bearer <access_token>
 **Auth Required:** No
 
 **Success Response (200):**
+
 ```json
 {
   "success": true,
@@ -553,6 +589,7 @@ Authorization: Bearer <access_token>
 **Auth Required:** No
 
 **Success Response (200):**
+
 ```json
 {
   "success": true,
@@ -579,6 +616,7 @@ Authorization: Bearer <access_token>
 **Auth Required:** No
 
 **Success Response (200):**
+
 ```json
 {
   "success": true,
@@ -603,6 +641,7 @@ Authorization: Bearer <access_token>
 **Auth Required:** No
 
 **Request Body:**
+
 ```json
 {
   "session_id": "string (required, UUID)",
@@ -614,6 +653,7 @@ Authorization: Bearer <access_token>
 ```
 
 **Success Response (201):**
+
 ```json
 {
   "success": true,
@@ -623,7 +663,7 @@ Authorization: Bearer <access_token>
     "timestamp": "2025-12-12T14:35:00+07:00",
     "hr": 78.5,
     "temp": 37.0,
-    "eda": 0.50,
+    "eda": 0.5,
     "created_at": "2025-12-12T14:35:02+07:00"
   }
 }
@@ -638,6 +678,7 @@ Authorization: Bearer <access_token>
 **Auth Required:** No
 
 **Request Body:**
+
 ```json
 {
   "readings": [
@@ -658,6 +699,7 @@ Authorization: Bearer <access_token>
 ```
 
 **Success Response (201):**
+
 ```json
 {
   "success": true,
@@ -694,11 +736,13 @@ Authorization: Bearer <access_token>
 **Auth Required:** Yes 🔐
 
 **Headers:**
+
 ```
 Authorization: Bearer <access_token>
 ```
 
 **Request Body:**
+
 ```json
 {
   "timestamp": "string (optional)",
@@ -709,6 +753,7 @@ Authorization: Bearer <access_token>
 ```
 
 **Success Response (200):**
+
 ```json
 {
   "success": true,
@@ -733,11 +778,13 @@ Authorization: Bearer <access_token>
 **Auth Required:** Yes 🔐
 
 **Headers:**
+
 ```
 Authorization: Bearer <access_token>
 ```
 
 **Success Response (200):**
+
 ```json
 {
   "success": true,
@@ -756,6 +803,7 @@ Authorization: Bearer <access_token>
 **Auth Required:** No
 
 **Success Response (200):**
+
 ```json
 {
   "success": true,
@@ -785,6 +833,7 @@ Authorization: Bearer <access_token>
 **Auth Required:** No
 
 **Success Response (200):**
+
 ```json
 {
   "success": true,
@@ -812,6 +861,7 @@ Authorization: Bearer <access_token>
 **Auth Required:** No
 
 **Request Body:**
+
 ```json
 {
   "session_id": "string (optional, UUID)",
@@ -826,6 +876,7 @@ Authorization: Bearer <access_token>
 ```
 
 **Success Response (201):**
+
 ```json
 {
   "success": true,
@@ -853,6 +904,7 @@ Authorization: Bearer <access_token>
 **Auth Required:** No
 
 **Request Body:**
+
 ```json
 {
   "timestamp": "string (optional)",
@@ -866,6 +918,7 @@ Authorization: Bearer <access_token>
 ```
 
 **Success Response (200):**
+
 ```json
 {
   "success": true,
@@ -893,6 +946,7 @@ Authorization: Bearer <access_token>
 **Auth Required:** No
 
 **⚠️ CRITICAL CASCADE DELETE:** Deleting a stress history record will **automatically delete its entire measurement session**, including:
+
 - The associated `measurement_session`
 - ALL `stress_history` records with the same `session_id`
 - ALL `sensor_readings` with the same `session_id`
@@ -900,6 +954,7 @@ Authorization: Bearer <access_token>
 This action **cannot be undone**.
 
 **Success Response (200):**
+
 ```json
 {
   "success": true,
@@ -920,6 +975,7 @@ This action **cannot be undone**.
 **Description:** Predicts stress level using ML model. Automatically creates a measurement session and saves both sensor readings and prediction results.
 
 **Request Body:**
+
 ```json
 {
   "hr": "float (required, heart rate in BPM)",
@@ -930,6 +986,7 @@ This action **cannot be undone**.
 ```
 
 **Success Response (200):**
+
 ```json
 {
   "success": true,
@@ -948,6 +1005,7 @@ This action **cannot be undone**.
 ```
 
 **Possible Labels:**
+
 - `Normal` - No stress detected
 - `Medium` - Moderate stress level
 - `High Stress` - High stress level
@@ -959,6 +1017,7 @@ This action **cannot be undone**.
 ### Common Error Codes
 
 **400 Bad Request:**
+
 ```json
 {
   "success": false,
@@ -967,6 +1026,7 @@ This action **cannot be undone**.
 ```
 
 **401 Unauthorized:**
+
 ```json
 {
   "msg": "Missing Authorization Header"
@@ -974,6 +1034,7 @@ This action **cannot be undone**.
 ```
 
 **404 Not Found:**
+
 ```json
 {
   "success": false,
@@ -982,6 +1043,7 @@ This action **cannot be undone**.
 ```
 
 **500 Internal Server Error:**
+
 ```json
 {
   "success": false,
@@ -994,15 +1056,18 @@ This action **cannot be undone**.
 ## Notes
 
 ### Timestamps
+
 - All timestamps are in **Jakarta timezone (UTC+7)**
 - Format: ISO 8601 (e.g., `2025-12-12T14:30:00+07:00`)
 
 ### UUIDs
+
 - Session IDs use UUID v4 format
 - User IDs use UUID v4 format
 - Example: `a1b2c3d4-e5f6-7890-abcd-ef1234567890`
 
 ### Authentication
+
 - JWT tokens expire after configured time (default: 15 minutes for access token)
 - Refresh tokens have longer expiration
 - Include token in `Authorization` header: `Bearer <token>`
@@ -1010,9 +1075,11 @@ This action **cannot be undone**.
 ### Cascade Delete Behavior
 
 **Session → Related Data:**
+
 - Deleting a `measurement_session` removes all related `sensor_readings` and `stress_history`
 
 **Stress History → Session:**
+
 - Deleting a `stress_history` record removes its associated `measurement_session`
 - This triggers the above cascade, removing all data for that session
 
@@ -1023,6 +1090,7 @@ This action **cannot be undone**.
 ### PowerShell Examples
 
 **Login:**
+
 ```powershell
 $response = Invoke-RestMethod -Uri "http://127.0.0.1:5000/api/auth/login" `
   -Method POST `
@@ -1033,6 +1101,7 @@ $token = $response.access_token
 ```
 
 **Create Session with Auth:**
+
 ```powershell
 $headers = @{
   "Authorization" = "Bearer $token"
@@ -1045,6 +1114,7 @@ Invoke-RestMethod -Uri "http://127.0.0.1:5000/api/sessions/uuid-here" `
 ```
 
 **Predict Stress:**
+
 ```powershell
 Invoke-RestMethod -Uri "http://127.0.0.1:5000/api/predict-stress" `
   -Method POST `

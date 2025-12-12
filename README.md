@@ -2,6 +2,12 @@
 
 Flask application for real-time stress monitoring with WebSocket support for ESP32 devices and React frontend.
 
+## 📚 Documentation
+
+- **[API Contract](API_CONTRACT.md)** - Complete API documentation with request/response examples
+- **[WebSocket Guide](WEBSOCKET_GUIDE.md)** - WebSocket implementation and usage
+- **[Testing Guide](TESTING_GUIDE.md)** - Testing instructions and examples
+
 ## Quick start (PowerShell)
 
 ```powershell
