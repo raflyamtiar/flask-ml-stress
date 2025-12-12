@@ -287,10 +287,19 @@ class MeasurementSessionService:
 
     @staticmethod
     def delete(session_id: str) -> bool:
-        """Delete a measurement session."""
+        """Delete a measurement session and all related data (cascade delete)."""
         session = MeasurementSession.query.get(session_id)
         if not session:
             return False
+        
+        # Manually delete related records if CASCADE is not at database level
+        # Delete all sensor readings for this session
+        SensorReading.query.filter_by(session_id=session_id).delete()
+        
+        # Delete all stress history for this session
+        HistoryStress.query.filter_by(session_id=session_id).delete()
+        
+        # Delete the session itself
         db.session.delete(session)
         db.session.commit()
         return True

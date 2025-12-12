@@ -143,6 +143,14 @@ measurement_sessions (1) ──< (many) stress_history
 measurement_sessions (1) ──< (many) sensor_readings
 ```
 
+**⚠️ CASCADE DELETE Behavior:**
+
+- When a `measurement_session` is deleted, ALL related data is automatically removed:
+  - All `stress_history` records with matching `session_id`
+  - All `sensor_readings` records with matching `session_id`
+- This prevents orphaned data and maintains referential integrity
+- Implemented at application level (SQLAlchemy ORM) for SQLite compatibility
+
 ### Table: `measurement_sessions`
 
 Stores measurement session information. Each session represents a single stress prediction event.
@@ -500,7 +508,13 @@ Note: Session ID (UUID) and timestamp are auto-generated.
 DELETE /api/sessions/{session_id}
 ```
 
-**Warning:** Deleting a session may affect related `stress_history` and `sensor_readings` records.
+**⚠️ CASCADE DELETE Warning:**
+Deleting a session will **automatically delete ALL related data**:
+
+- All stress history records with this `session_id`
+- All sensor readings with this `session_id`
+
+This action **cannot be undone**. Make sure you want to permanently remove all measurement data for this session.
 
 ### Sensor Readings API
 
