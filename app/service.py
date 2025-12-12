@@ -165,11 +165,33 @@ class StressHistoryService:
 
     @staticmethod
     def delete(rec_id: int) -> bool:
+        """Delete stress history record and cascade delete its session if it exists."""
         rec = HistoryStress.query.get(rec_id)
         if not rec:
             return False
+        
+        # Get session_id before deleting the record
+        session_id = rec.session_id
+        
+        # Delete the stress history record
         db.session.delete(rec)
         db.session.commit()
+        
+        # If this record had a session, cascade delete the session
+        # (which will also delete all related sensor_readings and other stress_history)
+        if session_id:
+            session = MeasurementSession.query.get(session_id)
+            if session:
+                # Delete all sensor readings for this session
+                SensorReading.query.filter_by(session_id=session_id).delete()
+                
+                # Delete all remaining stress history for this session
+                HistoryStress.query.filter_by(session_id=session_id).delete()
+                
+                # Delete the session itself
+                db.session.delete(session)
+                db.session.commit()
+        
         return True
 
     @staticmethod
