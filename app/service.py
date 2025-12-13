@@ -288,6 +288,7 @@ class MeasurementSessionService:
         """Create a new measurement session."""
         session = MeasurementSession(
             id=str(uuid.uuid4()),
+            name=data.get('name') if data else None,
             created_at=datetime.now(JAKARTA_TZ),
             notes=data.get('notes', '') if data else ''
         )
@@ -306,6 +307,22 @@ class MeasurementSessionService:
         """Get a measurement session by ID."""
         session = MeasurementSession.query.get(session_id)
         return MeasurementSessionService._to_dict(session) if session else None
+
+    @staticmethod
+    def update(session_id: str, data: dict) -> Optional[Dict[str, Any]]:
+        """Update a measurement session."""
+        session = MeasurementSession.query.get(session_id)
+        if not session:
+            return None
+        
+        # Update fields if provided
+        if 'name' in data:
+            session.name = data['name']
+        if 'notes' in data:
+            session.notes = data['notes']
+        
+        db.session.commit()
+        return MeasurementSessionService._to_dict(session)
 
     @staticmethod
     def delete(session_id: str) -> bool:
@@ -331,6 +348,7 @@ class MeasurementSessionService:
         """Convert MeasurementSession model to dictionary."""
         return {
             'id': session.id,
+            'name': session.name,
             'created_at': session.created_at.isoformat() if session.created_at else None,
             'notes': session.notes or ''
         }

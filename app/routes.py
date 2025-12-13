@@ -303,6 +303,26 @@ def create_session():
 		return jsonify({'success': False, 'error': str(e)}), 500
 
 
+@main.route('/api/sessions/<session_id>', methods=['PUT'])
+@jwt_required()
+def update_session(session_id):
+	"""Update a measurement session. Requires authentication."""
+	try:
+		data = request.get_json() or {}
+		if not data:
+			return jsonify({
+				'success': False,
+				'error': 'No data provided'
+			}), 400
+		
+		session = MeasurementSessionService.update(session_id, data)
+		if session:
+			return jsonify({'success': True, 'data': session})
+		return jsonify({'success': False, 'error': 'Session not found'}), 404
+	except Exception as e:
+		return jsonify({'success': False, 'error': str(e)}), 500
+
+
 @main.route('/api/sessions/<session_id>', methods=['DELETE'])
 @jwt_required()
 def delete_session(session_id):
