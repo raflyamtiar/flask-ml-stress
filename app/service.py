@@ -165,11 +165,33 @@ class StressHistoryService:
 
     @staticmethod
     def delete(rec_id: int) -> bool:
+        """Delete stress history record and cascade delete its session if it exists."""
         rec = HistoryStress.query.get(rec_id)
         if not rec:
             return False
+        
+        # Get session_id before deleting the record
+        session_id = rec.session_id
+        
+        # Delete the stress history record
         db.session.delete(rec)
         db.session.commit()
+        
+        # If this record had a session, cascade delete the session
+        # (which will also delete all related sensor_readings and other stress_history)
+        if session_id:
+            session = MeasurementSession.query.get(session_id)
+            if session:
+                # Delete all sensor readings for this session
+                SensorReading.query.filter_by(session_id=session_id).delete()
+                
+                # Delete all remaining stress history for this session
+                HistoryStress.query.filter_by(session_id=session_id).delete()
+                
+                # Delete the session itself
+                db.session.delete(session)
+                db.session.commit()
+        
         return True
 
     @staticmethod
@@ -266,6 +288,7 @@ class MeasurementSessionService:
         """Create a new measurement session."""
         session = MeasurementSession(
             id=str(uuid.uuid4()),
+            name=data.get('name') if data else None,
             created_at=datetime.now(JAKARTA_TZ),
             notes=data.get('notes', '') if data else ''
         )
@@ -286,11 +309,36 @@ class MeasurementSessionService:
         return MeasurementSessionService._to_dict(session) if session else None
 
     @staticmethod
+    def update(session_id: str, data: dict) -> Optional[Dict[str, Any]]:
+        """Update a measurement session."""
+        session = MeasurementSession.query.get(session_id)
+        if not session:
+            return None
+        
+        # Update fields if provided
+        if 'name' in data:
+            session.name = data['name']
+        if 'notes' in data:
+            session.notes = data['notes']
+        
+        db.session.commit()
+        return MeasurementSessionService._to_dict(session)
+
+    @staticmethod
     def delete(session_id: str) -> bool:
-        """Delete a measurement session."""
+        """Delete a measurement session and all related data (cascade delete)."""
         session = MeasurementSession.query.get(session_id)
         if not session:
             return False
+        
+        # Manually delete related records if CASCADE is not at database level
+        # Delete all sensor readings for this session
+        SensorReading.query.filter_by(session_id=session_id).delete()
+        
+        # Delete all stress history for this session
+        HistoryStress.query.filter_by(session_id=session_id).delete()
+        
+        # Delete the session itself
         db.session.delete(session)
         db.session.commit()
         return True
@@ -300,6 +348,7 @@ class MeasurementSessionService:
         """Convert MeasurementSession model to dictionary."""
         return {
             'id': session.id,
+            'name': session.name,
             'created_at': session.created_at.isoformat() if session.created_at else None,
             'notes': session.notes or ''
         }

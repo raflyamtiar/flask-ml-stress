@@ -73,8 +73,9 @@ def create_app_info():
 		}), 500
 
 @main.route('/api/app-info/<int:app_id>', methods=['PUT'])
+@jwt_required()
 def update_app_info(app_id):
-	"""Update an existing app info record."""
+	"""Update an existing app info record. Requires authentication."""
 	try:
 		data = request.get_json()
 		if not data:
@@ -101,8 +102,9 @@ def update_app_info(app_id):
 		}), 500
 
 @main.route('/api/app-info/<int:app_id>', methods=['DELETE'])
+@jwt_required()
 def delete_app_info(app_id):
-	"""Delete an app info record."""
+	"""Delete an app info record. Requires authentication."""
 	try:
 		success = AppInfoService.delete(app_id)
 		if success:
@@ -172,7 +174,9 @@ def create_stress_history():
 
 
 @main.route('/api/stress-history/<int:rec_id>', methods=['PUT'])
+@jwt_required()
 def update_stress_history(rec_id):
+	"""Update stress history record. Requires authentication."""
 	try:
 		data = request.get_json() or {}
 		item = StressHistoryService.update(rec_id, data)
@@ -184,7 +188,9 @@ def update_stress_history(rec_id):
 
 
 @main.route('/api/stress-history/<int:rec_id>', methods=['DELETE'])
+@jwt_required()
 def delete_stress_history(rec_id):
+	"""Delete stress history record. Requires authentication. WARNING: Cascades to session."""
 	try:
 		ok = StressHistoryService.delete(rec_id)
 		if ok:
@@ -297,9 +303,30 @@ def create_session():
 		return jsonify({'success': False, 'error': str(e)}), 500
 
 
+@main.route('/api/sessions/<session_id>', methods=['PUT'])
+@jwt_required()
+def update_session(session_id):
+	"""Update a measurement session. Requires authentication."""
+	try:
+		data = request.get_json() or {}
+		if not data:
+			return jsonify({
+				'success': False,
+				'error': 'No data provided'
+			}), 400
+		
+		session = MeasurementSessionService.update(session_id, data)
+		if session:
+			return jsonify({'success': True, 'data': session})
+		return jsonify({'success': False, 'error': 'Session not found'}), 404
+	except Exception as e:
+		return jsonify({'success': False, 'error': str(e)}), 500
+
+
 @main.route('/api/sessions/<session_id>', methods=['DELETE'])
+@jwt_required()
 def delete_session(session_id):
-	"""Delete a measurement session."""
+	"""Delete a measurement session. Requires authentication."""
 	try:
 		ok = MeasurementSessionService.delete(session_id)
 		if ok:
@@ -424,8 +451,9 @@ def create_sensor_reading():
 
 
 @main.route('/api/sensor-readings/<int:reading_id>', methods=['PUT'])
+@jwt_required()
 def update_sensor_reading(reading_id):
-	"""Update a sensor reading."""
+	"""Update a sensor reading. Requires authentication."""
 	try:
 		data = request.get_json() or {}
 		reading = SensorReadingService.update(reading_id, data)
@@ -437,8 +465,9 @@ def update_sensor_reading(reading_id):
 
 
 @main.route('/api/sensor-readings/<int:reading_id>', methods=['DELETE'])
+@jwt_required()
 def delete_sensor_reading(reading_id):
-	"""Delete a sensor reading."""
+	"""Delete a sensor reading. Requires authentication."""
 	try:
 		ok = SensorReadingService.delete(reading_id)
 		if ok:

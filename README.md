@@ -2,6 +2,12 @@
 
 Flask application for real-time stress monitoring with WebSocket support for ESP32 devices and React frontend.
 
+## 📚 Documentation
+
+- **[API Contract](API_CONTRACT.md)** - Complete API documentation with request/response examples
+- **[WebSocket Guide](WEBSOCKET_GUIDE.md)** - WebSocket implementation and usage
+- **[Testing Guide](TESTING_GUIDE.md)** - Testing instructions and examples
+
 ## Quick start (PowerShell)
 
 ```powershell
@@ -64,28 +70,28 @@ The script prints colored status messages (yellow = action, cyan = notice, green
 | `GET`                         | `/api/app-info`                           | Get all app info records                           | No            |
 | `GET`                         | `/api/app-info/{id}`                      | Get specific app info by ID                        | No            |
 | `POST`                        | `/api/app-info`                           | Create new app info                                | No            |
-| `PUT`                         | `/api/app-info/{id}`                      | Update app info by ID                              | No            |
-| `DELETE`                      | `/api/app-info/{id}`                      | Delete app info by ID                              | No            |
+| `PUT`                         | `/api/app-info/{id}`                      | Update app info by ID                              | **Yes** 🔐    |
+| `DELETE`                      | `/api/app-info/{id}`                      | Delete app info by ID                              | **Yes** 🔐    |
 | **Stress History CRUD**       |
 | `GET`                         | `/api/stress-history`                     | Get all stress history records                     | No            |
 | `GET`                         | `/api/stress-history/{id}`                | Get specific stress record                         | No            |
 | `GET`                         | `/api/sessions/{id}/stress-history`       | Get stress history records for a session           | No            |
 | `POST`                        | `/api/stress-history`                     | Create new stress record                           | No            |
-| `PUT`                         | `/api/stress-history/{id}`                | Update stress record                               | No            |
-| `DELETE`                      | `/api/stress-history/{id}`                | Delete stress record                               | No            |
+| `PUT`                         | `/api/stress-history/{id}`                | Update stress record                               | **Yes** 🔐    |
+| `DELETE`                      | `/api/stress-history/{id}`                | Delete stress record (⚠️ cascades to session)      | **Yes** 🔐    |
 | **Measurement Sessions CRUD** |
 | `GET`                         | `/api/sessions`                           | Get all measurement sessions                       | No            |
 | `GET`                         | `/api/sessions/{id}`                      | Get specific session by ID                         | No            |
 | `POST`                        | `/api/sessions`                           | Create new measurement session                     | No            |
-| `DELETE`                      | `/api/sessions/{id}`                      | Delete session by ID                               | No            |
+| `DELETE`                      | `/api/sessions/{id}`                      | Delete session by ID (⚠️ cascades to readings)     | **Yes** 🔐    |
 | **Sensor Readings CRUD**      |
 | `GET`                         | `/api/sensor-readings`                    | Get all sensor readings                            | No            |
 | `GET`                         | `/api/sensor-readings/{id}`               | Get specific sensor reading                        | No            |
 | `GET`                         | `/api/sessions/{id}/sensor-readings`      | Get sensor readings for a session                  | No            |
 | `POST`                        | `/api/sensor-readings`                    | Create new sensor reading                          | No            |
 | `POST`                        | `/api/sessions/{id}/sensor-readings/bulk` | Create multiple readings for a session             | No            |
-| `PUT`                         | `/api/sensor-readings/{id}`               | Update sensor reading                              | No            |
-| `DELETE`                      | `/api/sensor-readings/{id}`               | Delete sensor reading                              | No            |
+| `PUT`                         | `/api/sensor-readings/{id}`               | Update sensor reading                              | **Yes** 🔐    |
+| `DELETE`                      | `/api/sensor-readings/{id}`               | Delete sensor reading                              | **Yes** 🔐    |
 | **ML Prediction**             |
 | `POST`                        | `/api/predict-stress`                     | Predict stress from sensor data                    | No            |
 | **ESP32 HTTP Fallback**       |
@@ -142,6 +148,23 @@ The application uses the following database tables with relationships:
 measurement_sessions (1) ──< (many) stress_history
 measurement_sessions (1) ──< (many) sensor_readings
 ```
+
+**⚠️ CASCADE DELETE Behavior:**
+
+**1. Session → Related Data (when deleting a session):**
+
+- When a `measurement_session` is deleted, ALL related data is automatically removed:
+  - All `stress_history` records with matching `session_id`
+  - All `sensor_readings` records with matching `session_id`
+- This prevents orphaned data and maintains referential integrity
+- Implemented at application level (SQLAlchemy ORM) for SQLite compatibility
+
+**2. Stress History → Session (when deleting stress history):**
+
+- When a `stress_history` record is deleted, its associated `measurement_session` is also deleted
+- This cascade will then trigger cascade #1 above, removing all related data for that session
+- **Warning:** Deleting one stress history record will delete the entire session and all its data
+- Use with caution!
 
 ### Table: `measurement_sessions`
 
@@ -369,6 +392,15 @@ Delete record
 DELETE /api/stress-history/{id}
 ```
 
+**⚠️ CRITICAL WARNING - CASCADE DELETE:**
+Deleting a stress history record will **automatically delete its entire measurement session**, which includes:
+
+- The associated `measurement_session`
+- ALL other `stress_history` records with the same `session_id`
+- ALL `sensor_readings` with the same `session_id`
+
+This action **cannot be undone**. Only delete if you want to remove the entire measurement session.
+
 ### curl examples for stress history
 
 ```powershell
@@ -500,7 +532,13 @@ Note: Session ID (UUID) and timestamp are auto-generated.
 DELETE /api/sessions/{session_id}
 ```
 
-**Warning:** Deleting a session may affect related `stress_history` and `sensor_readings` records.
+**⚠️ CASCADE DELETE Warning:**
+Deleting a session will **automatically delete ALL related data**:
+
+- All stress history records with this `session_id`
+- All sensor readings with this `session_id`
+
+This action **cannot be undone**. Make sure you want to permanently remove all measurement data for this session.
 
 ### Sensor Readings API
 

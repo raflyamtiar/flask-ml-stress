@@ -29,19 +29,20 @@ class MeasurementSession(db.Model):
     __tablename__ = 'measurement_sessions'
 
     id = db.Column(db.String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    name = db.Column(db.String(255), nullable=True)
     created_at = db.Column(db.DateTime, nullable=False)
     notes = db.Column(db.Text)
     
-    # Relationships
-    stress_histories = db.relationship('HistoryStress', back_populates='session', lazy='dynamic')
-    sensor_readings = db.relationship('SensorReading', back_populates='session', lazy='dynamic')
+    # Relationships with cascade delete
+    stress_histories = db.relationship('HistoryStress', back_populates='session', lazy='dynamic', cascade='all, delete-orphan')
+    sensor_readings = db.relationship('SensorReading', back_populates='session', lazy='dynamic', cascade='all, delete-orphan')
 
 
 class HistoryStress(db.Model):
     __tablename__ = 'stress_history'
 
     id = db.Column(db.Integer, primary_key=True)
-    session_id = db.Column(db.String(36), db.ForeignKey('measurement_sessions.id'), nullable=True)
+    session_id = db.Column(db.String(36), db.ForeignKey('measurement_sessions.id', ondelete='CASCADE'), nullable=True)
     timestamp = db.Column(db.DateTime, nullable=False)
     hr = db.Column(db.Float)
     temp = db.Column(db.Float)
@@ -60,7 +61,7 @@ class SensorReading(db.Model):
     __tablename__ = 'sensor_readings'
 
     id = db.Column(db.Integer, primary_key=True)
-    session_id = db.Column(db.String(36), db.ForeignKey('measurement_sessions.id'), nullable=False)
+    session_id = db.Column(db.String(36), db.ForeignKey('measurement_sessions.id', ondelete='CASCADE'), nullable=False)
     timestamp = db.Column(db.DateTime, nullable=False)
     hr = db.Column(db.Float, nullable=False)
     temp = db.Column(db.Float, nullable=False)
