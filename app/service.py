@@ -258,7 +258,7 @@ class StressModelService:
         model = cls._load_model()
 
         # prepare dataframe consistent with training columns
-        df = pd.DataFrame([[hr, temp, eda]], columns=['HR', 'TEMP', 'EDA'])
+        df = pd.DataFrame([[hr, eda, temp]], columns=['HR', 'EDA', 'TEMP'])
         X = scaler.transform(df)
 
         pred = model.predict(X)[0]
