@@ -919,3 +919,162 @@ def delete_user(user_id):
 			'success': False,
 			'error': str(e)
 		}), 500
+
+
+# ============================================
+# Offline sync endpoint from ESP32
+# ============================================
+
+@main.route('/api/offline-sync', methods=['POST'])
+def offline_sync():
+	"""
+	Receive offline prediction records from ESP32.
+
+	Expected payload:
+	{
+		"device_id": "ESP32_001",
+		"records": [
+			{
+				"hr": 86.4,
+				"temp": 36.7,
+				"eda": 4.2,
+				"label": "NORMAL",
+				"prediction_source": "esp32_offline",
+				"duration": 60,
+				"average_window": 10,
+				"local_millis": 123456
+			}
+		]
+	}
+	"""
+	try:
+		data = request.get_json() or {}
+
+		device_id = data.get('device_id', 'ESP32_UNKNOWN')
+		records = data.get('records')
+
+		if not isinstance(records, list) or len(records) == 0:
+			return jsonify({
+				'success': False,
+				'error': 'records must be a non-empty array'
+			}), 400
+
+		created_items = []
+		errors = []
+
+		for idx, record in enumerate(records):
+			try:
+				missing = [
+					key for key in ('hr', 'temp', 'eda', 'label')
+					if key not in record
+				]
+
+				if missing:
+					errors.append({
+						'index': idx,
+						'error': f"Missing fields: {', '.join(missing)}"
+					})
+					continue
+
+				hr = float(record['hr'])
+				temp = float(record['temp'])
+				eda = float(record['eda'])
+
+				raw_label = str(record.get('label', '')).strip()
+
+				if raw_label.lower() == 'normal':
+					label = 'Normal'
+				elif raw_label.lower() in ['medium', 'medium stress', 'medium stres']:
+					label = 'Medium Stress'
+				elif raw_label.lower() in ['high', 'high stress']:
+					label = 'High Stress'
+				else:
+					label = 'Normal'
+
+				duration = record.get('duration', 60)
+				average_window = record.get('average_window', 10)
+				prediction_source = record.get(
+					'prediction_source',
+					'esp32_offline'
+				)
+				local_millis = record.get('local_millis')
+
+				# Create session for each offline record
+				session_data = {
+					'name': f'Offline ESP32 Session - {device_id}',
+					'notes': (
+						f'Offline synced data from {device_id}; '
+						f'duration={duration}s; '
+						f'average_window={average_window}s; '
+						f'local_millis={local_millis}'
+					)
+				}
+
+				session = MeasurementSessionService.create(session_data)
+
+				# Save sensor reading
+				sensor_data = {
+					'session_id': session['id'],
+					'hr': hr,
+					'temp': temp,
+					'eda': eda
+				}
+
+				saved_sensor = SensorReadingService.create(sensor_data)
+
+				# Save stress history using ESP32 offline result
+				history_data = {
+					'session_id': session['id'],
+					'hr': hr,
+					'temp': temp,
+					'eda': eda,
+					'label': label,
+					'confidence_level': 1.0,
+					'notes': (
+						f'prediction_source={prediction_source}; '
+						f'device_id={device_id}; '
+						f'offline_sync=true; '
+						f'duration={duration}s; '
+						f'average_window={average_window}s; '
+						f'local_millis={local_millis}'
+					)
+				}
+
+				saved_history = StressHistoryService.create(history_data)
+
+				created_items.append({
+					'index': idx,
+					'session_id': session['id'],
+					'sensor_reading_id': saved_sensor['id'],
+					'history_id': saved_history['id'],
+					'label': label
+				})
+
+			except Exception as item_error:
+				errors.append({
+					'index': idx,
+					'error': str(item_error)
+				})
+
+		response = {
+			'success': len(created_items) > 0,
+			'message': 'Offline sync processed',
+			'device_id': device_id,
+			'received_count': len(records),
+			'created_count': len(created_items),
+			'error_count': len(errors),
+			'data': created_items
+		}
+
+		if errors:
+			response['errors'] = errors
+
+		status_code = 201 if len(created_items) > 0 else 400
+		return jsonify(response), status_code
+
+	except Exception as e:
+		return jsonify({
+			'success': False,
+			'error': str(e)
+		}), 500
+
