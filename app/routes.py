@@ -237,13 +237,48 @@ def predict_stress():
 		result = StressModelService.predict(hr, temp, eda)
 
 		# Step 3: Save sensor reading to the session
-		sensor_data = {
-			'session_id': session['id'],
-			'hr': hr,
-			'temp': temp,
-			'eda': eda
-		}
-		saved_sensor = SensorReadingService.create(sensor_data)
+		# Save sensor readings
+		# If ESP32 sends readings array, save all 10 last-second samples.
+		# If not, fallback to saving only the final average reading.
+		saved_readings = []
+
+		readings = record.get('readings', [])
+
+		if isinstance(readings, list) and len(readings) > 0:
+			for reading_idx, reading in enumerate(readings):
+				try:
+					reading_hr = float(reading.get('hr', hr))
+					reading_temp = float(reading.get('temp', temp))
+					reading_eda = float(reading.get('eda', eda))
+
+					sensor_data = {
+						'session_id': session['id'],
+						'hr': reading_hr,
+						'temp': reading_temp,
+						'eda': reading_eda
+					}
+
+					saved_reading = SensorReadingService.create(sensor_data)
+					saved_readings.append(saved_reading)
+
+				except Exception as reading_error:
+					errors.append({
+						'index': idx,
+						'reading_index': reading_idx,
+						'error': str(reading_error)
+					})
+		else:
+			sensor_data = {
+				'session_id': session['id'],
+				'hr': hr,
+				'temp': temp,
+				'eda': eda
+			}
+
+			saved_reading = SensorReadingService.create(sensor_data)
+			saved_readings.append(saved_reading)
+
+		saved_sensor = saved_readings[0] if saved_readings else {'id': None}
 
 		# Step 4: Save prediction result to stress_history with session reference
 		history_data = {
@@ -927,154 +962,169 @@ def delete_user(user_id):
 
 @main.route('/api/offline-sync', methods=['POST'])
 def offline_sync():
-	"""
-	Receive offline prediction records from ESP32.
+    try:
+        data = request.get_json() or {}
 
-	Expected payload:
-	{
-		"device_id": "ESP32_001",
-		"records": [
-			{
-				"hr": 86.4,
-				"temp": 36.7,
-				"eda": 4.2,
-				"label": "NORMAL",
-				"prediction_source": "esp32_offline",
-				"duration": 60,
-				"average_window": 10,
-				"local_millis": 123456
-			}
-		]
-	}
-	"""
-	try:
-		data = request.get_json() or {}
+        device_id = data.get('device_id', 'ESP32_UNKNOWN')
+        records = data.get('records')
 
-		device_id = data.get('device_id', 'ESP32_UNKNOWN')
-		records = data.get('records')
+        if not isinstance(records, list) or len(records) == 0:
+            return jsonify({
+                'success': False,
+                'error': 'records must be a non-empty array'
+            }), 400
 
-		if not isinstance(records, list) or len(records) == 0:
-			return jsonify({
-				'success': False,
-				'error': 'records must be a non-empty array'
-			}), 400
+        created_items = []
+        errors = []
 
-		created_items = []
-		errors = []
+        for idx, record in enumerate(records):
+            try:
+                missing = [
+                    key for key in ('hr', 'temp', 'eda', 'label')
+                    if key not in record
+                ]
 
-		for idx, record in enumerate(records):
-			try:
-				missing = [
-					key for key in ('hr', 'temp', 'eda', 'label')
-					if key not in record
-				]
+                if missing:
+                    errors.append({
+                        'index': idx,
+                        'error': f"Missing fields: {', '.join(missing)}"
+                    })
+                    continue
 
-				if missing:
-					errors.append({
-						'index': idx,
-						'error': f"Missing fields: {', '.join(missing)}"
-					})
-					continue
+                hr = float(record['hr'])
+                temp = float(record['temp'])
+                eda = float(record['eda'])
 
-				hr = float(record['hr'])
-				temp = float(record['temp'])
-				eda = float(record['eda'])
+                raw_label = str(record.get('label', '')).strip().lower()
 
-				raw_label = str(record.get('label', '')).strip()
+                if raw_label == 'normal':
+                    label = 'Normal'
+                elif raw_label in ['medium', 'medium stress', 'medium stres']:
+                    label = 'Medium Stress'
+                elif raw_label in ['high', 'high stress']:
+                    label = 'High Stress'
+                else:
+                    label = 'Normal'
 
-				if raw_label.lower() == 'normal':
-					label = 'Normal'
-				elif raw_label.lower() in ['medium', 'medium stress', 'medium stres']:
-					label = 'Medium Stress'
-				elif raw_label.lower() in ['high', 'high stress']:
-					label = 'High Stress'
-				else:
-					label = 'Normal'
+                duration = record.get('duration', 60)
+                average_window = record.get('average_window', 10)
+                prediction_source = record.get(
+                    'prediction_source',
+                    'esp32_offline'
+                )
+                local_millis = record.get('local_millis')
 
-				duration = record.get('duration', 60)
-				average_window = record.get('average_window', 10)
-				prediction_source = record.get(
-					'prediction_source',
-					'esp32_offline'
-				)
-				local_millis = record.get('local_millis')
+                # Create session for each offline record
+                session_data = {
+                    'name': f'Offline ESP32 Session - {device_id}',
+                    'notes': (
+                        f'Offline synced data from {device_id}; '
+                        f'duration={duration}s; '
+                        f'average_window={average_window}s; '
+                        f'local_millis={local_millis}'
+                    )
+                }
 
-				# Create session for each offline record
-				session_data = {
-					'name': f'Offline ESP32 Session - {device_id}',
-					'notes': (
-						f'Offline synced data from {device_id}; '
-						f'duration={duration}s; '
-						f'average_window={average_window}s; '
-						f'local_millis={local_millis}'
-					)
-				}
+                session = MeasurementSessionService.create(session_data)
 
-				session = MeasurementSessionService.create(session_data)
+                # ============================================
+                # Save sensor readings
+                # Jika ada readings array dari ESP32, simpan semua.
+                # Kalau readings kosong, simpan 1 data rata-rata akhir.
+                # ============================================
+                saved_readings = []
 
-				# Save sensor reading
-				sensor_data = {
-					'session_id': session['id'],
-					'hr': hr,
-					'temp': temp,
-					'eda': eda
-				}
+                readings = record.get('readings', [])
 
-				saved_sensor = SensorReadingService.create(sensor_data)
+                if isinstance(readings, list) and len(readings) > 0:
+                    for reading_idx, reading in enumerate(readings):
+                        try:
+                            reading_hr = float(reading.get('hr', hr))
+                            reading_temp = float(reading.get('temp', temp))
+                            reading_eda = float(reading.get('eda', eda))
 
-				# Save stress history using ESP32 offline result
-				history_data = {
-					'session_id': session['id'],
-					'hr': hr,
-					'temp': temp,
-					'eda': eda,
-					'label': label,
-					'confidence_level': 1.0,
-					'notes': (
-						f'prediction_source={prediction_source}; '
-						f'device_id={device_id}; '
-						f'offline_sync=true; '
-						f'duration={duration}s; '
-						f'average_window={average_window}s; '
-						f'local_millis={local_millis}'
-					)
-				}
+                            sensor_data = {
+                                'session_id': session['id'],
+                                'hr': reading_hr,
+                                'temp': reading_temp,
+                                'eda': reading_eda
+                            }
 
-				saved_history = StressHistoryService.create(history_data)
+                            saved_reading = SensorReadingService.create(sensor_data)
+                            saved_readings.append(saved_reading)
 
-				created_items.append({
-					'index': idx,
-					'session_id': session['id'],
-					'sensor_reading_id': saved_sensor['id'],
-					'history_id': saved_history['id'],
-					'label': label
-				})
+                        except Exception as reading_error:
+                            errors.append({
+                                'index': idx,
+                                'reading_index': reading_idx,
+                                'error': str(reading_error)
+                            })
+                else:
+                    sensor_data = {
+                        'session_id': session['id'],
+                        'hr': hr,
+                        'temp': temp,
+                        'eda': eda
+                    }
 
-			except Exception as item_error:
-				errors.append({
-					'index': idx,
-					'error': str(item_error)
-				})
+                    saved_reading = SensorReadingService.create(sensor_data)
+                    saved_readings.append(saved_reading)
 
-		response = {
-			'success': len(created_items) > 0,
-			'message': 'Offline sync processed',
-			'device_id': device_id,
-			'received_count': len(records),
-			'created_count': len(created_items),
-			'error_count': len(errors),
-			'data': created_items
-		}
+                saved_sensor = saved_readings[0] if saved_readings else {'id': None}
 
-		if errors:
-			response['errors'] = errors
+                # Save stress history using ESP32 offline result
+                history_data = {
+                    'session_id': session['id'],
+                    'hr': hr,
+                    'temp': temp,
+                    'eda': eda,
+                    'label': label,
+                    'confidence_level': 1.0,
+                    'notes': (
+                        f'prediction_source={prediction_source}; '
+                        f'device_id={device_id}; '
+                        f'offline_sync=true; '
+                        f'duration={duration}s; '
+                        f'average_window={average_window}s; '
+                        f'local_millis={local_millis}'
+                    )
+                }
 
-		status_code = 201 if len(created_items) > 0 else 400
-		return jsonify(response), status_code
+                saved_history = StressHistoryService.create(history_data)
 
-	except Exception as e:
-		return jsonify({
-			'success': False,
-			'error': str(e)
-		}), 500
+                created_items.append({
+                    'index': idx,
+                    'session_id': session['id'],
+                    'sensor_reading_id': saved_sensor['id'],
+                    'sensor_reading_count': len(saved_readings),
+                    'history_id': saved_history['id'],
+                    'label': label
+                })
 
+            except Exception as item_error:
+                errors.append({
+                    'index': idx,
+                    'error': str(item_error)
+                })
+
+        response = {
+            'success': len(created_items) > 0,
+            'message': 'Offline sync processed',
+            'device_id': device_id,
+            'received_count': len(records),
+            'created_count': len(created_items),
+            'error_count': len(errors),
+            'data': created_items
+        }
+
+        if errors:
+            response['errors'] = errors
+
+        status_code = 201 if len(created_items) > 0 else 400
+        return jsonify(response), status_code
+
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
